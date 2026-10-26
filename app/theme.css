@@ -1,0 +1,193 @@
+/* Shared UI tokens. Change severity colours and the type scale here. */
+:root {
+  --font-family-ui: Arial, Helvetica, sans-serif;
+  --font-size-body: 14px;
+  --font-size-control: 13px;
+  --font-size-table: 13px;
+  --font-size-caption: 12px;
+  --font-size-page-title: clamp(24px, 2.1vw, 30px);
+  --font-size-section-title: 18px;
+  --font-size-dialog-title: 22px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 600;
+  --font-weight-bold: 700;
+  --action-primary: #075b47;
+  --action-primary-hover: #004535;
+  --selection-background: #f0f6f2;
+
+  --severity-high: #dc2626;
+  --severity-high-text: #991b1b;
+  --severity-high-bg: #fee2e2;
+  --severity-high-border: #fca5a5;
+  --severity-medium: #eab308;
+  --severity-medium-text: #854d0e;
+  --severity-medium-bg: #fef9c3;
+  --severity-medium-border: #fde047;
+  --severity-low: #2563eb;
+  --severity-low-text: #1e40af;
+  --severity-low-bg: #dbeafe;
+  --severity-low-border: #93c5fd;
+
+  --red: var(--severity-high);
+  --yellow: var(--severity-medium);
+  --blue: var(--severity-low);
+}
+
+body {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+}
+
+button, input, select, textarea {
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-control);
+}
+
+button, label, th, .badge {
+  font-weight: var(--font-weight-medium);
+}
+
+input, select, textarea, .stat-label {
+  font-weight: var(--font-weight-regular);
+}
+
+.page-heading h1, .card-heading h2, .modal-heading h2 {
+  font-weight: var(--font-weight-bold);
+}
+
+.primary, .blue-button {
+  background: var(--action-primary);
+  border-color: var(--action-primary);
+  color: #fff;
+}
+
+.primary:hover, .blue-button:hover {
+  background: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+}
+
+.tabs button.active, .ranger .tabs button.active {
+  background: var(--selection-background);
+  border-bottom-color: var(--action-primary);
+  color: var(--action-primary);
+}
+
+.alert-list small, .activity-feed small {
+  font-weight: var(--font-weight-regular);
+}
+
+.alert-list b, .activity-feed b {
+  font-weight: var(--font-weight-bold);
+}
+
+.severity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 5px;
+  padding: 4px 8px;
+  min-height: 26px;
+  border: 1px solid var(--severity-border);
+  border-radius: 4px;
+  color: var(--severity-text);
+  background: var(--severity-background);
+  font-family: var(--font-family-ui);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.severity[data-severity="High"] {
+  --severity-accent: var(--severity-high);
+  --severity-text: var(--severity-high-text);
+  --severity-background: var(--severity-high-bg);
+  --severity-border: var(--severity-high-border);
+}
+
+.severity[data-severity="Medium"] {
+  --severity-accent: var(--severity-medium);
+  --severity-text: var(--severity-medium-text);
+  --severity-background: var(--severity-medium-bg);
+  --severity-border: var(--severity-medium-border);
+}
+
+.severity[data-severity="Low"] {
+  --severity-accent: var(--severity-low);
+  --severity-text: var(--severity-low-text);
+  --severity-background: var(--severity-low-bg);
+  --severity-border: var(--severity-low-border);
+}
+
+.severity svg {
+  color: var(--severity-accent);
+}
+
+.alert-list-card tr.alert-row-selected,
+.alert-list > button.selected {
+  background: var(--selection-background);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.alert-evidence {
+  align-items: start;
+}
+
+.recharts-wrapper, .recharts-text, .recharts-tooltip-wrapper,
+.recharts-default-legend {
+  font-family: var(--font-family-ui);
+}
+
+.recharts-cartesian-axis-tick-value {
+  font-size: var(--font-size-caption);
+}
+
+@media (max-width: 720px) {
+  .tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .alert-evidence {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .severity {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* Shared account layout accommodates editable contact details in both roles. */
+.account-grid > .stack,
+.account-grid .card,
+.profile > div {
+  min-width: 0;
+}
+
+.account-information .card-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.profile h2,
+.profile p,
+.account-grid .details dd,
+.recovery-email {
+  overflow-wrap: anywhere;
+}
+
+.account-menu .avatar-small {
+  flex-shrink: 0;
+}
+
+.account-menu > span:last-child {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

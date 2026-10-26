@@ -1,0 +1,68 @@
+/* Fluid layouts shared by both roles, including narrow and touch devices. */
+.workspace, .main-content, .main-content > *, .stack,
+.card, .filter-bar, .heading-actions, .chart { min-width: 0; }
+.main-content { max-width: 1920px; margin-inline: auto; }
+.page-heading, .heading-actions, .filter-bar, .card-heading, .button-row { flex-wrap: wrap; }
+.page-heading > div:first-child { min-width: 0; }
+.page-heading p, .info-box, .details dd { overflow-wrap: anywhere; }
+.filter-bar input, .filter-bar select, .search-field { max-width: 100%; min-width: 0; }
+.table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
+.modal { max-height: calc(100dvh - 32px); }
+.sidebar nav { min-height: 0; }
+.sidebar-footer { flex-shrink: 0; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible { outline: 3px solid #528e7c; outline-offset: 3px; }
+
+@media (max-width: 1023px) {
+  .sidebar { width: 240px; transform: translateX(-100%); transition: transform 0.18s ease; }
+  .sidebar.open { transform: translateX(0); }
+  .workspace { margin-left: 0; }
+  .mobile-menu, .mobile-close { display: inline-flex; }
+  .mobile-close { position: absolute; top: 12px; right: 8px; color: #fff; }
+  .sidebar .brand { justify-content: flex-start; padding-left: 16px; }
+  .sidebar .brand .logo { font-size: 21px; gap: 7px; }
+  .sidebar .brand .logo svg { width: 34px; }
+  .sidebar-scrim { display: block; position: fixed; inset: 0; z-index: 35; border: 0; border-radius: 0; background: #082a2380; padding: 0; }
+  .topbar { padding-inline: 16px; gap: 12px; position: sticky; top: 0; z-index: 30; }
+  .mobile-menu { min-width: 40px; min-height: 40px; }
+}
+@media (max-width: 960px) {
+  .overview-grid, .map-detail-grid, .predictions-grid, .cameras-grid,
+  .rangers-grid, .rules-grid, .account-grid { grid-template-columns: minmax(0, 1fr); }
+  .cameras-grid .stack { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .page-heading { align-items: flex-start; }
+  .heading-actions { margin-left: 0; max-width: 100%; }
+}
+@media (max-width: 600px) {
+  .main-content { padding: 18px 12px; }
+  .topbar { padding-inline: 10px; gap: 8px; }
+  .topbar-right { gap: 8px; }
+  .page-heading { gap: 12px; }
+  .heading-actions { width: 100%; justify-content: flex-start; gap: 8px; }
+  .heading-actions .date-label { margin-left: auto; }
+  .filter-bar { gap: 9px; }
+  .filter-bar > select, .filter-bar > input, .filter-bar > .search-field { flex: 1 1 150px; width: auto; }
+  .card-heading { align-items: center; row-gap: 10px; }
+  .card-heading h2 { overflow-wrap: anywhere; }
+  .card-heading > button { flex-shrink: 0; }
+  .modal-backdrop { padding: 12px; }
+  .modal { padding: 20px; width: 100%; }
+  .modal-heading { gap: 10px; }
+  .dialog-actions { flex-wrap: wrap; }
+  .toast { width: max-content; max-width: calc(100vw - 24px); bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+@media (max-width: 380px) {
+  .proposal-label, .top-divider { display: none; }
+  .topbar-right { margin-left: auto; }
+  .stat-value { overflow-wrap: anywhere; }
+  .page-heading h1 { font-size: 24px; }
+}
+@media (pointer: coarse) {
+  button:not(.toggle):not(.map-record-marker), select,
+  input:not([type="checkbox"]):not([type="radio"]), .sidebar nav a { min-height: 44px; }
+  input, select, textarea { font-size: 16px; }
+  input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar { transition: none; }
+}
