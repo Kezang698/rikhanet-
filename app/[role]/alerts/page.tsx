@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Check, ChevronRight, FileText, MapPin, User } from "lucide-react";
 import { DATE_LABEL, ZONES, type AlertRecord } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { useApp, useAssignedZones } from "@/components/context";
 import {
   Animal,
   Card,
@@ -21,9 +21,8 @@ export default function Alerts() {
     [zone, setZone] = useState("all"),
     [id, setId] = useState("A-001");
   const ranger = role === "ranger";
-  const visible = data.alerts.filter(
-    (a) => !ranger || ["GE-1", "GE-2"].includes(a.zone),
-  );
+  const zones = useAssignedZones();
+  const visible = data.alerts.filter((a) => zones.includes(a.zone));
   const filtered = visible.filter(
     (a) =>
       a.status === tab &&
@@ -51,7 +50,7 @@ export default function Alerts() {
         title="Alerts"
         description={
           ranger
-            ? "View and respond to wildlife alerts in your assigned zones (GE-1, GE-2)"
+            ? "View and respond to wildlife alerts in your assigned gewogs"
             : "Monitor and manage wildlife alerts from AI detections, ranger reports and system triggers."
         }
       />
@@ -101,7 +100,7 @@ export default function Alerts() {
                         : a.species + " detected"}
                     </b>
                     <small>
-                      {a.zone} — {ZONES[a.zone]}
+                      {ZONES[a.zone]}
                     </small>
                     <small>
                       {DATE_LABEL}, {a.time}
@@ -145,8 +144,6 @@ export default function Alerts() {
                       </td>
                       <td>{a.species}</td>
                       <td>
-                        {a.zone}
-                        <br />
                         {ZONES[a.zone]}
                       </td>
                       <td>{a.trigger}</td>
@@ -171,7 +168,7 @@ export default function Alerts() {
           >
             <p className="meta">
               <MapPin size={14} />
-              {selected.zone} — {ZONES[selected.zone]} &nbsp; {DATE_LABEL},{" "}
+              {ZONES[selected.zone]} &nbsp; {DATE_LABEL},{" "}
               {selected.time}
             </p>
             <div className={ranger ? "alert-evidence" : "stack"}>
@@ -188,7 +185,7 @@ export default function Alerts() {
                   <Severity value={selected.severity} />
                 </dd>
                 <dt>Location</dt>
-                <dd>{selected.zone} — {ZONES[selected.zone]}<br /><small className="muted">Alert GPS not supplied</small></dd>
+                <dd>{ZONES[selected.zone]}<br /><small className="muted">Alert GPS not supplied</small></dd>
                 <dt>Confidence</dt>
                 <dd>0.92 (model score)</dd>
                 <dt>Rule rationale</dt>

@@ -450,7 +450,7 @@ export function Details({
     >
       <p className="meta">
         {sighting.date} {sighting.time} &nbsp; {sighting.camera} &nbsp;{" "}
-        {sighting.zone}
+        {ZONES[sighting.zone]}
       </p>
       <WildlifeImage sighting={sighting} box />
       <dl className="details">
@@ -469,9 +469,9 @@ export function Details({
           <br />
           <small className="muted">{locationLabel(location.source)}</small>
         </dd>
-        <dt>Zone</dt>
+        <dt>Gewog</dt>
         <dd>
-          {sighting.zone} — {ZONES[sighting.zone]}
+          {ZONES[sighting.zone]}
         </dd>
         <dt>Source</dt>
         <dd>

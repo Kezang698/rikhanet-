@@ -2,7 +2,8 @@
 import { useState, type FormEvent } from "react";
 import { Bell, Edit, Info, KeyRound, LockKeyhole, LogOut } from "lucide-react";
 import { profileInitials, type AccountProfile } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { ZONES } from "@/lib/data";
+import { useApp, useAssignedZones } from "@/components/context";
 import { Badge, Card, Heading, Modal, Toggle } from "@/components/ui";
 
 function ProfileEditor({
@@ -88,11 +89,12 @@ function ProfileEditor({
 export default function Account() {
   const { role, data, setData, dialog, notify, signOut } = useApp();
   const ranger = role === "ranger";
+  const assigned = useAssignedZones();
   const profile = data.profiles[role];
   const [editingProfile, setEditingProfile] = useState(false);
   const prefs = ranger
     ? [
-        "Wildlife alerts (assigned zones)",
+        "Wildlife alerts (assigned gewogs)",
         "Daily activity summary",
         "System announcements",
         "Camera status alerts",
@@ -105,10 +107,10 @@ export default function Account() {
       ];
   const descriptions = ranger
     ? [
-        "Elephant, leopard and other key species in your assigned zones",
+        "Elephant, leopard and other key species in your assigned gewogs",
         "Daily email summary of your field activity",
         "Important system notifications and announcements",
-        "Camera connectivity and status in your assigned zones",
+        "Camera connectivity and status in your assigned gewogs",
       ]
     : [
         "Important system notifications and errors",
@@ -170,8 +172,12 @@ export default function Account() {
               <dd>{profile.phone || "Not provided"}</dd>
               {ranger && (
                 <>
-                  <dt>Assigned zones</dt>
-                  <dd>GE-1 — Gelephu Core, GE-2 — East Corridor</dd>
+                  <dt>Assigned gewogs</dt>
+                  <dd>
+                    {assigned.length
+                      ? assigned.map((z) => ZONES[z]).join(", ")
+                      : "None assigned yet"}
+                  </dd>
                 </>
               )}
               <dt>Account created</dt>
@@ -182,7 +188,7 @@ export default function Account() {
             {ranger && (
               <div className="info-box">
                 <LockKeyhole size={18} />
-                Assigned zones are read-only and managed by the system
+                Assigned gewogs are read-only and managed by the system
                 administrator.
               </div>
             )}

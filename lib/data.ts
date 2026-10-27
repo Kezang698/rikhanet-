@@ -1,4 +1,5 @@
 import { demoCoordinates } from "./maps";
+import { GEWOGS } from "./gewogs";
 
 export type Role = "admin" | "ranger";
 export type View =
@@ -14,13 +15,27 @@ export type View =
   | "rules"
   | "settings"
   | "account";
-export type Zone = "GE-1" | "GE-2" | "GE-3" | "GE-4";
-export const ZONES: Record<Zone, string> = {
-  "GE-1": "Gelephu Core",
-  "GE-2": "East Corridor",
-  "GE-3": "South Riverside",
-  "GE-4": "North Forest",
-};
+// A zone is a gewog. Its id is the official gewog code (for example "1306").
+export type Zone = string;
+export const ZONE_IDS: Zone[] = GEWOGS.map((g) => g.id);
+export const ZONES: Record<Zone, string> = Object.fromEntries(
+  GEWOGS.map((g) => [g.id, g.name]),
+);
+export function zoneName(zone: Zone) {
+  return ZONES[zone] ?? zone;
+}
+export function isZone(value: string): value is Zone {
+  return Object.prototype.hasOwnProperty.call(ZONES, value);
+}
+/** Gewogs a signed-in user may see: everything for admin, the admin-assigned gewogs for a ranger. */
+export function assignedZones(
+  data: Pick<DemoState, "rangers" | "currentRangerId">,
+  role: Role,
+): Zone[] {
+  if (role === "admin") return ZONE_IDS;
+  const me = data.rangers.find((r) => r.id === data.currentRangerId);
+  return me ? me.zones.filter(isZone) : [];
+}
 export const SPECIES = [
   "Asian Elephant",
   "Wild Boar",
@@ -144,21 +159,23 @@ export interface DemoState {
   batches: Batch[];
   preferences: Record<string, boolean>;
   profiles: Record<Role, AccountProfile>;
+  /** Staff record of the demo ranger login; its zones are set by the admin. */
+  currentRangerId: string;
   config: { threshold: number; advisory: number; interval: number };
 }
 
 export function seedState(): DemoState {
   const initial: Array<[string, string, Zone, string, number, Review]> = [
-    ["Asian Elephant", "06:24", "GE-2", "CAM-012", 0.92, "Needs review"],
-    ["Wild Boar", "05:11", "GE-1", "CAM-003", 0.87, "Approved"],
-    ["Leopard", "04:17", "GE-4", "CAM-028", 0.88, "Approved"],
-    ["Barking Deer", "02:53", "GE-1", "CAM-018", 0.81, "Needs review"],
-    ["Asian Elephant", "21:36", "GE-2", "CAM-012", 0.89, "Approved"],
-    ["Gaur", "18:02", "GE-3", "CAM-021", 0.65, "Rejected"],
-    ["Sambar Deer", "16:11", "GE-1", "CAM-007", 0.83, "Approved"],
-    ["Asian Elephant", "11:04", "GE-2", "CAM-015", 0.86, "Approved"],
-    ["Leopard", "23:47", "GE-1", "CAM-018", 0.79, "Needs review"],
-    ["Wild Boar", "19:20", "GE-1", "CAM-003", 0.78, "Approved"],
+    ["Asian Elephant", "06:24", "1302", "CAM-012", 0.92, "Needs review"],
+    ["Wild Boar", "05:11", "1306", "CAM-003", 0.87, "Approved"],
+    ["Leopard", "04:17", "1313", "CAM-028", 0.88, "Approved"],
+    ["Barking Deer", "02:53", "1306", "CAM-018", 0.81, "Needs review"],
+    ["Asian Elephant", "21:36", "1302", "CAM-012", 0.89, "Approved"],
+    ["Gaur", "18:02", "1307", "CAM-021", 0.65, "Rejected"],
+    ["Sambar Deer", "16:11", "1306", "CAM-007", 0.83, "Approved"],
+    ["Asian Elephant", "11:04", "1302", "CAM-015", 0.86, "Approved"],
+    ["Leopard", "23:47", "1306", "CAM-018", 0.79, "Needs review"],
+    ["Wild Boar", "19:20", "1306", "CAM-003", 0.78, "Approved"],
   ];
   const sightings: Sighting[] = initial.map((r, i) => ({
     id: `S-${String(i + 1).padStart(3, "0")}`,
@@ -178,7 +195,7 @@ export function seedState(): DemoState {
       species: SPECIES[i % SPECIES.length],
       date: `2026-09-${String(27 - Math.floor((i - 10) / 40)).padStart(2, "0")}`,
       time: `${String(i % 24).padStart(2, "0")}:${String((i * 7) % 60).padStart(2, "0")}`,
-      zone: (["GE-1", "GE-2", "GE-3", "GE-4"] as Zone[])[i % 4],
+      zone: ZONE_IDS[i % ZONE_IDS.length],
       camera: `CAM-${String((i % 28) + 1).padStart(3, "0")}`,
       confidence: Number((0.64 + (i % 34) / 100).toFixed(2)),
       review: i < 71 ? "Needs review" : "Approved",
@@ -188,9 +205,10 @@ export function seedState(): DemoState {
   const alerts: AlertRecord[] = Array.from({ length: 29 }, (_, i) => ({
     id: `A-${String(i + 1).padStart(3, "0")}`,
     species: i === 0 || i === 2 ? "Asian Elephant" : SPECIES[i % 6],
-    zone: (["GE-2", "GE-4", "GE-2", "GE-1", "GE-3", "GE-4", "GE-2"] as Zone[])[
-      i % 7
-    ],
+    zone:
+      i < 7
+        ? (["1302", "1313", "1302", "1306", "1307", "1313", "1302"] as Zone[])[i]
+        : ZONE_IDS[(i * 5) % ZONE_IDS.length],
     severity:
       i === 10
         ? "Low"
@@ -227,15 +245,25 @@ export function seedState(): DemoState {
   const cameraIds = [12, 3, 1, 15, 18, 21, 7, 28];
   const cameras: CameraRecord[] = Array.from({ length: 42 }, (_, i) => ({
     id: `CAM-${String(i < 8 ? cameraIds[i] : 50 + i).padStart(3, "0")}`,
-    zone: (
-      ["GE-2", "GE-1", "GE-1", "GE-2", "GE-2", "GE-3", "GE-3", "GE-4"] as Zone[]
-    )[i % 8],
+    zone: ZONE_IDS[i % ZONE_IDS.length],
     status: i === 0 || i > 36 ? "Offline" : "Online",
     time: initial[i % 10][1],
     source: "Recorded (demo)",
     lat: "27.0285",
     lng: "90.4791",
   }));
+  // The eight named cameras sit in the gewog their first sightings were recorded in.
+  const cameraZones: Record<string, Zone> = {
+    "CAM-012": "1302", "CAM-003": "1306", "CAM-001": "1301", "CAM-015": "1302",
+    "CAM-018": "1306", "CAM-021": "1307", "CAM-007": "1306", "CAM-028": "1313",
+  };
+  for (const camera of cameras)
+    if (cameraZones[camera.id]) camera.zone = cameraZones[camera.id];
+  // A sighting from a camera belongs to that camera's gewog.
+  for (const sighting of sightings) {
+    const camera = cameras.find((c) => c.id === sighting.camera);
+    if (camera) sighting.zone = camera.zone;
+  }
   const names = [
     "Karma Dorji",
     "Sonam Tobgay",
@@ -245,6 +273,7 @@ export function seedState(): DemoState {
     "Tashi Lhamo",
     "Kinley Wangdi",
     "Dorji Wangchuk",
+    "Tashi Dorji",
   ];
   for (const camera of cameras) {
     const [lat, lng] = demoCoordinates(camera.zone, camera.id);
@@ -252,15 +281,17 @@ export function seedState(): DemoState {
     camera.lng = String(lng);
     camera.locationSource = "demo";
   }
+  // Assignments are examples; the admin changes them on the Rangers page.
   const assigned: Zone[][] = [
-    ["GE-1"],
-    ["GE-1", "GE-2"],
-    ["GE-2"],
-    ["GE-2", "GE-4"],
-    ["GE-3"],
-    ["GE-3"],
-    ["GE-4"],
-    ["GE-4"],
+    ["1306"],
+    ["1306", "1302"],
+    ["1302", "1301"],
+    ["1302", "1313"],
+    ["1307"],
+    ["1307"],
+    ["1313", "1308"],
+    ["1303", "1305"],
+    ["1306", "1302"],
   ];
   const rangers: RangerRecord[] = names.map((name, i) => ({
     id: `RNG-${String(i + 1).padStart(3, "0")}`,
@@ -277,7 +308,7 @@ export function seedState(): DemoState {
     phone: `+975 17 234 56${i}`,
     notes:
       i === 0
-        ? "Experienced field ranger. Conducts regular camera maintenance in GE-1."
+        ? "Experienced field ranger. Conducts regular camera maintenance in Gelephu gewog."
         : "",
   }));
   return {
@@ -293,7 +324,7 @@ export function seedState(): DemoState {
         enabled: true,
         kind: "distance",
         severity: "High",
-        recipients: "Rangers (GE-1, GE-2), Admin Team",
+        recipients: "Rangers (assigned gewog), Admin Team",
         history: [
           "28 Sep 2026, 06:24 — Rule created by Admin",
           "28 Sep 2026, 10:15 — Recipients updated by Admin",
@@ -307,7 +338,7 @@ export function seedState(): DemoState {
         enabled: true,
         kind: "repeat",
         severity: "Medium",
-        recipients: "Rangers (relevant zone), Admin Team",
+        recipients: "Rangers (relevant gewog), Admin Team",
         history: ["28 Sep 2026 — Rule created by Admin"],
       },
     ],
@@ -350,12 +381,13 @@ export function seedState(): DemoState {
       "admin-Wildlife alerts": true,
       "admin-Daily summaries": true,
       "admin-Product updates": false,
-      "ranger-Wildlife alerts (assigned zones)": true,
+      "ranger-Wildlife alerts (assigned gewogs)": true,
       "ranger-Daily activity summary": true,
       "ranger-System announcements": true,
       "ranger-Camera status alerts": true,
     },
     profiles: defaultProfiles(),
+    currentRangerId: "RNG-009",
     config: { threshold: 0.8, advisory: 70, interval: 6 },
   };
 }

@@ -88,15 +88,15 @@ export default function Rules() {
   return (
     <>
       <Heading
-        title="Zones & Alert Rules"
-        description="Define monitoring zones and configure automated alert rules."
+        title="Gewogs & Alert Rules"
+        description="View the gewog boundaries used as monitoring zones and configure automated alert rules."
       />
       <div className="tabs pill-tabs">
         <button
           className={tab === "zones" ? "active" : ""}
           onClick={() => setTab("zones")}
         >
-          Monitoring Zones
+          Gewogs
         </button>
         <button
           className={tab === "rules" ? "active" : ""}
@@ -107,11 +107,11 @@ export default function Rules() {
       </div>
       <div className={`rules-grid ${tab === "rules" ? "rules-only" : ""}`}>
         {tab === "zones" && (
-          <Card title="Proposed Gelephu Monitoring Zones">
+          <Card title="Gewogs of the Gelephu Mindfulness City area (monitoring zones)">
             <MapPanel mode="zones" />
             <p className="muted small">
-              The basemap shows real Gelephu geography. GE sector circles are
-              illustrative; official boundaries require surveyed GIS data.
+              Boundaries are the 17 gewogs supplied for the GMC area, simplified
+              for display. Ngangla is only partly inside the GMC (about 25%).
             </p>
           </Card>
         )}

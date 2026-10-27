@@ -2,6 +2,17 @@
 
 This project recreates the 21 screens in the supplied WEBAPP.docx as a runnable Next.js frontend: one shared login, twelve admin views and eight ranger views. The screens use the document's green visual style, original wildlife artwork, real Gelephu map tiles and browser demonstration data.
 
+## Gewogs as zones — 27 October 2026
+
+The four illustrative zones (GE-1 to GE-4) are replaced by the 17 real gewogs of the Gelephu Mindfulness City area (from `GMC_Gewogs`). A zone is now a gewog, identified by its gewog code.
+
+- `lib/gewogs.ts` holds the boundaries, converted from Web Mercator to latitude/longitude and simplified (about 25 m, 81 KB). Ngangla is marked partial (about 25% inside the GMC).
+- The map draws every gewog polygon with its name. Large gewogs are always labelled; small ones appear from zoom level 10. Click a polygon or name for its code and area. Predictions colour each gewog by demonstration risk.
+- Sample sightings, cameras and alerts are spread over all 17 gewogs. Sample positions are always inside the gewog; a sighting from a camera sits in that camera's gewog. Risk values are still demonstration data.
+- Rangers see only the gewogs the admin assigns, on every page and on the map. The admin assigns gewogs with checkboxes in **Rangers > Edit Details**. The demo ranger login (Tashi Dorji) is staff record RNG-009. A ranger with no gewog sees empty lists.
+- Filters, tables, reports, predictions and the CSV import use gewog names. The import `zone` column accepts a gewog name or code (`public/sample-sightings.csv` updated).
+- Saved browser data is now stored under `rikhanet-demo-v2`. Data saved with the old GE zones is ignored, so the demo starts fresh once.
+
 ## Real Gelephu maps and responsive layouts — 26 October 2026
 
 The map pictures have been replaced with interactive Leaflet maps using OpenStreetMap street tiles, centred on Gelephu (26.87056 N, 90.48556 E). This shared map is used in both roles' Overview, Wildlife Map, Predictions and Cameras pages, plus admin Zones & Rules. Wildlife photographs retain the supplied prototype artwork.

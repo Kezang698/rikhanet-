@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, Info } from "lucide-react";
-import { shortDate, ZONES, type Zone } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { shortDate, ZONES } from "@/lib/data";
+import { DEMO_ZONE_RISK, DEMO_ZONE_TREND } from "@/lib/maps";
+import { useApp, useAssignedZones } from "@/components/context";
 import { Badge, Card, Heading, MapPanel, WildlifeImage } from "@/components/ui";
 import { useVisibleSightings } from "@/components/filters";
 
@@ -10,17 +11,23 @@ export default function Predictions() {
   const { role, go, setSelectedId } = useApp();
   const sightings = useVisibleSightings();
   const [zone, setZone] = useState("");
-  const rows = [
-    { zone: "GE-3", risk: 72, trend: "Increasing", tone: "red" },
-    { zone: "GE-2", risk: 58, trend: "Increasing", tone: "yellow" },
-    { zone: "GE-1", risk: 28, trend: "Stable", tone: "blue" },
-    { zone: "GE-4", risk: 16, trend: "Decreasing", tone: "blue" },
-  ].filter((r) => role === "admin" || ["GE-1", "GE-2"].includes(r.zone));
+  const zones = useAssignedZones();
+  const rows = zones
+    .map((z) => {
+      const risk = DEMO_ZONE_RISK[z];
+      return {
+        zone: z,
+        risk,
+        trend: DEMO_ZONE_TREND[z],
+        tone: risk >= 70 ? "red" : risk >= 40 ? "yellow" : "blue",
+      };
+    })
+    .sort((a, b) => b.risk - a.risk);
   return (
     <>
       <Heading
         title="Predictions"
-        description={`Modelled Asian elephant occurrence risk ${role === "ranger" ? "in your assigned zones" : "by zone"} (next 24 hours)`}
+        description={`Modelled Asian elephant occurrence risk ${role === "ranger" ? "in your assigned gewogs" : "by gewog"} (next 24 hours)`}
       >
         <span className="forecast-generated">
           {role === "ranger" ? "Generated: 08:00" : "Generated: 28 Sep 2026, 08:00"} <Info size={18} />
@@ -43,7 +50,7 @@ export default function Predictions() {
                   }}
                 >
                   <WildlifeImage sighting={s} />
-                  <b>{s.zone}</b>
+                  <b>{ZONES[s.zone]}</b>
                   <small>
                     {shortDate(s.date)}, {s.time}
                   </small>
@@ -54,11 +61,11 @@ export default function Predictions() {
           </Card>
         </div>
         <div className="stack">
-          <Card title="Zonal Risk Forecast">
+          <Card title="Gewog Risk Forecast">
             <table className="forecast-table">
               <thead>
                 <tr>
-                  <th>Zone</th>
+                  <th>Gewog</th>
                   <th>Risk (next 24h)</th>
                   <th>Trend</th>
                 </tr>
@@ -71,7 +78,7 @@ export default function Predictions() {
                     className={zone === r.zone ? "row-selected" : ""}
                   >
                     <td>
-                      {r.zone} — {ZONES[r.zone as Zone]}
+                      {ZONES[r.zone]}
                     </td>
                     <td>
                       <Badge tone={r.tone}>{r.risk}%</Badge>

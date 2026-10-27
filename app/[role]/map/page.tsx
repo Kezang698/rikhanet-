@@ -41,8 +41,8 @@ export default function WildlifeMap() {
         title="Wildlife Map"
         description={
           role === "admin"
-            ? "Explore sightings, camera locations and managed zones around Gelephu"
-            : "Explore sightings around your assigned zones with camera locations and managed zones"
+            ? "Explore sightings, camera locations and the 17 gewogs of the Gelephu Mindfulness City area"
+            : "Explore sightings and camera locations in your assigned gewogs"
         }
       />
       <div className="filter-bar">
@@ -129,10 +129,8 @@ export default function WildlifeMap() {
                 <br />
                 <small className="muted">{selectedLocation && locationLabel(selectedLocation.source)}</small>
               </dd>
-              <dt>Zone</dt>
-              <dd>
-                {selected.zone} — {ZONES[selected.zone]}
-              </dd>
+              <dt>Gewog</dt>
+              <dd>{ZONES[selected.zone]}</dd>
               <dt>Source</dt>
               <dd>{selected.camera}</dd>
               <dt>Confidence</dt>
@@ -160,7 +158,7 @@ export default function WildlifeMap() {
           <Card title={closed ? "Explore the map" : "No matching sightings"}>
             <p className="muted">
               {closed
-                ? "Select a monitoring zone on the map to view its sightings."
+                ? "Select a gewog on the map to view its sightings."
                 : "Change the species, date, zone or camera filters to see a matching record."}
             </p>
           </Card>
@@ -168,7 +166,7 @@ export default function WildlifeMap() {
       </div>
       <p className="map-caption">
         Real OpenStreetMap geography around Gelephu. Sightings without GPS use
-        sample or camera positions. GE sector circles are illustrative, not official boundaries.
+        sample or camera positions. Gewog boundaries are the supplied GMC data, simplified for display.
       </p>
     </>
   );

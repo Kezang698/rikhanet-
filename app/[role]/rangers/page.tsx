@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Edit, Plus, Search } from "lucide-react";
-import { ZONES, type RangerRecord, type Zone } from "@/lib/data";
+import { isZone, ZONE_IDS, ZONES, type RangerRecord, type Zone } from "@/lib/data";
 import { useApp } from "@/components/context";
 import { Badge, Card, Empty, Heading, Status } from "@/components/ui";
 import { ZoneSelect } from "@/components/filters";
@@ -16,7 +16,7 @@ export default function Rangers() {
     (r) =>
       (zone === "all" || r.zones.includes(zone as Zone)) &&
       (status === "all" || r.status === status) &&
-      `${r.name} ${r.id} ${r.zones}`.toLowerCase().includes(q.toLowerCase()),
+      `${r.name} ${r.id} ${r.zones.map((z) => ZONES[z]).join(" ")}`.toLowerCase().includes(q.toLowerCase()),
   );
   const selected = filtered.find((r) => r.id === id) ?? filtered[0];
   function edit(r?: RangerRecord) {
@@ -41,8 +41,10 @@ export default function Rangers() {
         },
         {
           name: "zones",
-          label: "Assigned zones (comma separated)",
-          value: r?.zones.join(", ") ?? "GE-1",
+          label: "Assigned gewogs (the ranger sees only these)",
+          type: "checkboxes",
+          value: r?.zones.join(",") ?? "",
+          options: ZONE_IDS.map((z) => ({ value: z, label: ZONES[z] })),
         },
         { name: "email", label: "Work email", type: "email", value: r?.email },
         { name: "phone", label: "Work contact", value: r?.phone ?? "+975 " },
@@ -63,11 +65,7 @@ export default function Rangers() {
       ],
       submit: r ? "Save changes" : "Add ranger",
       onSave: (v) => {
-        const zones = v.zones.split(",").map((z) => z.trim()) as Zone[];
-        if (zones.some((z) => !Object.keys(ZONES).includes(z))) {
-          notify("Use zone codes GE-1, GE-2, GE-3 or GE-4.");
-          return;
-        }
+        const zones = v.zones.split(",").filter(isZone) as Zone[];
         if (data.rangers.some((x) => x.id === v.id && x.id !== r?.id)) {
           notify("That staff ID already exists.");
           return;
@@ -84,6 +82,9 @@ export default function Rangers() {
         };
         setData((d) => ({
           ...d,
+          // Keep the demo ranger login linked if its staff ID is edited.
+          currentRangerId:
+            r && r.id === d.currentRangerId ? record.id : d.currentRangerId,
           rangers: r
             ? d.rangers.map((x) => (x.id === r.id ? record : x))
             : [...d.rangers, record],
@@ -97,7 +98,7 @@ export default function Rangers() {
     <>
       <Heading
         title="Rangers"
-        description="Manage field staff, contact details and zone assignments."
+        description="Manage field staff, contact details and gewog assignments. Rangers see only the gewogs assigned here."
       >
         <button className="primary" onClick={() => edit()}>
           <Plus size={18} />
@@ -109,7 +110,7 @@ export default function Rangers() {
           <Search size={16} />
           <input
             aria-label="Search rangers"
-            placeholder="Search by name, staff ID or zone…"
+            placeholder="Search by name, staff ID or gewog…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -134,7 +135,7 @@ export default function Rangers() {
                   <th>Name</th>
                   <th>Staff ID</th>
                   <th>Role</th>
-                  <th>Assigned Zones</th>
+                  <th>Assigned Gewogs</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -152,7 +153,7 @@ export default function Rangers() {
                     <td>{r.name}</td>
                     <td>{r.id}</td>
                     <td>{r.role}</td>
-                    <td>{r.zones.join(", ")}</td>
+                    <td>{r.zones.length ? r.zones.map((z) => ZONES[z]).join(", ") : "None"}</td>
                     <td>
                       <Status status={r.status} />
                     </td>
@@ -180,13 +181,15 @@ export default function Rangers() {
               <dd>{selected.id}</dd>
               <dt>Role</dt>
               <dd>{selected.role}</dd>
-              <dt>Assigned Zones</dt>
+              <dt>Assigned Gewogs</dt>
               <dd className="zone-tags">
-                {selected.zones.map((z) => (
-                  <span key={z}>
-                    <b>{z}</b> {ZONES[z]}
-                  </span>
-                ))}
+                {selected.zones.length
+                  ? selected.zones.map((z) => (
+                      <span key={z}>
+                        <b>{ZONES[z]}</b>
+                      </span>
+                    ))
+                  : "None assigned"}
               </dd>
               <dt>Work contact</dt>
               <dd>

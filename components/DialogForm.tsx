@@ -6,9 +6,10 @@ import type { DialogSpec } from "./context";
 export function DialogForm({ spec, close }: { spec: DialogSpec; close: () => void }) {
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const values = Object.fromEntries(
-      new FormData(e.currentTarget).entries(),
-    ) as Record<string, string>;
+    const form = new FormData(e.currentTarget);
+    const values = Object.fromEntries(form.entries()) as Record<string, string>;
+    for (const f of spec.fields ?? [])
+      if (f.type === "checkboxes") values[f.name] = form.getAll(f.name).join(",");
     spec.onSave?.(values);
     close();
   }
@@ -19,7 +20,27 @@ export function DialogForm({ spec, close }: { spec: DialogSpec; close: () => voi
           <p className="dialog-description">{spec.description}</p>
         )}
         <div className="form-fields">
-          {spec.fields?.map((f) => (
+          {spec.fields?.map((f) => f.type === "checkboxes" ? (
+            <fieldset key={f.name} className="form-checkboxes">
+              <legend>{f.label}</legend>
+              <div>
+                {f.options?.map((o) => {
+                  const { value, label } = typeof o === "string" ? { value: o, label: o } : o;
+                  return (
+                    <label key={value} className="check-option">
+                      <input
+                        type="checkbox"
+                        name={f.name}
+                        value={value}
+                        defaultChecked={(f.value ?? "").split(",").includes(value)}
+                      />
+                      {label}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ) : (
             <label key={f.name}>
               {f.label}
               {f.required !== false && <span className="required"> *</span>}
@@ -36,9 +57,10 @@ export function DialogForm({ spec, close }: { spec: DialogSpec; close: () => voi
                   defaultValue={f.value}
                   required={f.required !== false}
                 >
-                  {f.options?.map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
+                  {f.options?.map((o) => {
+                    const { value, label } = typeof o === "string" ? { value: o, label: o } : o;
+                    return <option key={value} value={value}>{label}</option>;
+                  })}
                 </select>
               ) : (
                 <input

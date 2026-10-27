@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Edit, Info, Plus, Search } from "lucide-react";
-import { DATE_LABEL, ZONES, type CameraRecord, type Zone } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { DATE_LABEL, ZONES, ZONE_IDS, type CameraRecord, type Zone } from "@/lib/data";
+import { useApp, useAssignedZones } from "@/components/context";
 import {
   cameraLocation,
   formatCoordinates,
-  GELEPHU_CENTER,
+  GEWOG_BY_ID,
   locationLabel,
 } from "@/lib/maps";
 import {
@@ -29,9 +29,10 @@ export default function Cameras() {
     [id, setId] = useState("CAM-012"),
     [page, setPage] = useState(1);
   const ranger = role === "ranger";
+  const zones = useAssignedZones();
   const filtered = data.cameras.filter(
     (c) =>
-      (!ranger || ["GE-1", "GE-2"].includes(c.zone)) &&
+      zones.includes(c.zone) &&
       (zone === "all" || c.zone === zone) &&
       (status === "all" || c.status === status) &&
       `${c.id} ${ZONES[c.zone]}`.toLowerCase().includes(q.toLowerCase()),
@@ -39,7 +40,7 @@ export default function Cameras() {
   const selected = filtered.find((c) => c.id === id) ?? filtered[0];
   useEffect(() => setPage(1), [q, zone, status]);
   function edit(camera?: CameraRecord) {
-    const location = camera ? cameraLocation(camera) : { coordinates: GELEPHU_CENTER, source: "demo" as const };
+    const location = camera ? cameraLocation(camera) : { coordinates: GEWOG_BY_ID[ZONE_IDS[0]].label, source: "demo" as const };
     dialog({
       title: camera ? "Edit camera" : "Register new camera",
       description:
@@ -54,10 +55,10 @@ export default function Cameras() {
         },
         {
           name: "zone",
-          label: "Zone",
+          label: "Gewog",
           type: "select",
           value: camera?.zone,
-          options: Object.keys(ZONES),
+          options: ZONE_IDS.map((z) => ({ value: z, label: ZONES[z] })),
         },
         {
           name: "lat",
@@ -120,7 +121,7 @@ export default function Cameras() {
         title="Cameras"
         description={
           ranger
-            ? "View camera locations and latest images in your assigned zones (GE-1, GE-2)"
+            ? "View camera locations and latest images in your assigned gewogs"
             : "Manage camera devices, view status and recent images."
         }
       >
@@ -165,8 +166,7 @@ export default function Cameras() {
               <thead>
                 <tr>
                   <th>Camera ID</th>
-                  <th>Zone</th>
-                  {!ranger && <th>Location</th>}
+                  <th>Gewog</th>
                   <th>Last received</th>
                   <th>Status</th>
                   <th>Source</th>
@@ -186,8 +186,7 @@ export default function Cameras() {
                     <td>
                       <b>{c.id}</b>
                     </td>
-                    <td>{c.zone}</td>
-                    {!ranger && <td>{ZONES[c.zone]}</td>}
+                    <td>{ZONES[c.zone]}</td>
                     <td>
                       {DATE_LABEL}
                       <br />
@@ -247,10 +246,8 @@ export default function Cameras() {
               <dl className="details">
                 <dt>Camera ID</dt>
                 <dd>{selected.id}</dd>
-                <dt>Zone</dt>
-                <dd>
-                  {selected.zone} — {ZONES[selected.zone]}
-                </dd>
+                <dt>Gewog</dt>
+                <dd>{ZONES[selected.zone]}</dd>
                 <dt>Last received</dt>
                 <dd>
                   {DATE_LABEL}, {selected.time}

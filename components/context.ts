@@ -1,10 +1,11 @@
 import {
   createContext,
   useContext,
+  useMemo,
   type Dispatch,
   type SetStateAction,
 } from "react";
-import type { DemoState, Role, View } from "@/lib/data";
+import { assignedZones, type DemoState, type Role, type View } from "@/lib/data";
 export interface FormField {
   name: string;
   label: string;
@@ -15,9 +16,11 @@ export interface FormField {
     | "number"
     | "textarea"
     | "select"
+    | "checkboxes"
     | "date";
+  /** For "checkboxes", the selected option values joined by commas. */
   value?: string;
-  options?: string[];
+  options?: Array<string | { value: string; label: string }>;
   required?: boolean;
   min?: number;
   max?: number;
@@ -46,4 +49,14 @@ export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("RiKhaNET context is missing");
   return ctx;
+}
+
+/** Gewogs the signed-in user can see (all for admin, admin-assigned for a ranger). */
+export function useAssignedZones() {
+  const { role, data } = useApp();
+  return useMemo(
+    () => assignedZones(data, role),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [role, data.rangers, data.currentRangerId],
+  );
 }

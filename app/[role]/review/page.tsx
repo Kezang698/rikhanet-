@@ -7,6 +7,7 @@ import {
   SPECIES,
   TODAY,
   ZONES,
+  ZONE_IDS,
   type Sighting,
   type Zone,
 } from "@/lib/data";
@@ -87,9 +88,13 @@ export default function DataReview() {
           headings.map((h, j) => [h, (r[j] ?? "").trim()]),
         );
         const c = Number(o.confidence);
+        // The zone column accepts a gewog name or its code.
+        const zoneId = ZONE_IDS.find(
+          (z) => z === o.zone || ZONES[z].toLowerCase() === o.zone.toLowerCase(),
+        );
         if (
           !SPECIES.includes(o.species) ||
-          !Object.keys(ZONES).includes(o.zone) ||
+          !zoneId ||
           !/^\d{4}-\d{2}-\d{2}$/.test(o.date) ||
           Number.isNaN(Date.parse(o.date)) ||
           !/^([01]\d|2[0-3]):[0-5]\d$/.test(o.time) ||
@@ -107,7 +112,7 @@ export default function DataReview() {
           species: o.species,
           date: o.date,
           time: o.time,
-          zone: o.zone as Zone,
+          zone: zoneId as Zone,
           camera: o.camera,
           confidence: c,
           review: "Automatically saved",
@@ -218,7 +223,8 @@ export default function DataReview() {
         <Card title="Import observation records" className="csv-guide">
           <p>
             Use the columns{" "}
-            <code>species,date,time,zone,camera,confidence</code>. Imported
+            <code>species,date,time,zone,camera,confidence</code>, where{" "}
+            <code>zone</code> is a gewog name (for example Gelephu) or code. Imported
             records save automatically in Sightings.
           </p>
           <div className="button-row">
@@ -226,7 +232,7 @@ export default function DataReview() {
               onClick={() =>
                 csvDownload("rikhanet-import-example.csv", [
                   ["species", "date", "time", "zone", "camera", "confidence"],
-                  ["Asian Elephant", TODAY, "06:24", "GE-2", "CAM-012", 0.92],
+                  ["Asian Elephant", TODAY, "06:24", "Chhuzangang", "CAM-012", 0.92],
                 ])
               }
             >

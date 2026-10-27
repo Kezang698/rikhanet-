@@ -168,7 +168,7 @@ export default function SettingsPage() {
           <button
             onClick={() =>
               notify(
-                "Test notification: Elephant detected in GE-2 (demonstration only).",
+                "Test notification: Elephant detected in Chhuzangang gewog (demonstration only).",
               )
             }
           >

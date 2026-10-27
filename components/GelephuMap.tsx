@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Layers, LocateFixed, MapPin, Maximize, Minus, Plus, RefreshCw, X } from "lucide-react";
 import type * as Leaflet from "leaflet";
-import { TODAY, ZONES, type CameraRecord, type Sighting, type Zone } from "@/lib/data";
+import { TODAY, zoneName, type CameraRecord, type Sighting, type Zone } from "@/lib/data";
+import { GEWOGS } from "@/lib/gewogs";
 import {
-  cameraLocation, DEMO_ZONE_CENTERS, DEMO_ZONE_RISK, formatCoordinates,
+  boundsOf, cameraLocation, DEMO_ZONE_RISK, formatCoordinates,
   GELEPHU_CENTER, GELEPHU_ZOOM, locationLabel, MAP_TILE_ATTRIBUTION,
   MAP_TILE_URL, sightingLocation, type Coordinates,
 } from "@/lib/maps";
-import { useApp } from "./context";
+import { useApp, useAssignedZones } from "./context";
+
+// Names of small gewogs appear from this zoom level; large ones are always labelled.
+const LABEL_ALL_ZOOM = 10;
+const LARGE_GEWOG_KM2 = 150;
 
 interface MapPanelProps {
   mode?: "activity" | "wildlife" | "prediction" | "zones" | "cameras";
@@ -38,12 +43,14 @@ export function MapPanel({
   mode = "activity", activeZone, filterLabel, sightings, cameras,
   selectedSightingId, selectedCameraId, onSelect, onSightingSelect, onCameraSelect,
 }: MapPanelProps) {
-  const { role, data } = useApp();
+  const { data } = useApp();
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
   const tiles = useRef<Leaflet.TileLayer | null>(null);
   const markers = useRef<Array<{ marker: Leaflet.Marker; ids: string[] }>>([]);
-  const sectors = useRef<Array<{ circle: Leaflet.Circle; zone: Zone }>>([]);
+  const sectors = useRef<Array<{ polygon: Leaflet.Polygon; zone: Zone }>>([]);
+  const activeZoneRef = useRef(activeZone);
+  activeZoneRef.current = activeZone;
   const actions = useRef({ onSelect, onSightingSelect, onCameraSelect });
   actions.current = { onSelect, onSightingSelect, onCameraSelect };
   const [leaflet, setLeaflet] = useState<typeof Leaflet | null>(null);
@@ -54,9 +61,7 @@ export function MapPanel({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(GELEPHU_ZOOM);
-  const allowedZones = useMemo(() => (Object.keys(ZONES) as Zone[]).filter(
-    zone => role === "admin" || zone === "GE-1" || zone === "GE-2",
-  ), [role]);
+  const allowedZones = useAssignedZones();
   const visibleSightings = useMemo(() =>
     (sightings ?? data.sightings.filter(s => s.date === TODAY))
       .filter(s => allowedZones.includes(s.zone)),
@@ -141,26 +146,38 @@ export function MapPanel({
       parent.append(button);
     }
     if (showZones) {
-      for (const zone of allowedZones) {
+      for (const gewog of GEWOGS) {
+        if (!allowedZones.includes(gewog.id)) continue;
+        const zone = gewog.id;
         const risk = DEMO_ZONE_RISK[zone];
         const color = mode === "prediction" ? risk >= 70 ? "#dc2626" : risk >= 40 ? "#eab308" : "#2563eb" : "#0b6b50";
-        const circle = L.circle(DEMO_ZONE_CENTERS[zone], {
-          radius: 1050, color, weight: 2, dashArray: "6 6", fillOpacity: 0.1,
-          interactive: false,
+        const polygon = L.polygon(gewog.ring, {
+          color, weight: 2, fillColor: color, fillOpacity: 0.12,
+          dashArray: gewog.partial ? "6 6" : undefined, bubblingMouseEvents: false,
         }).addTo(group);
-        sectors.current.push({ circle, zone });
-        const marker = L.marker(DEMO_ZONE_CENTERS[zone], {
-          icon: L.divIcon({ className: "map-sector-label", html: `<span>${zone}${mode === "prediction" ? ` · ${risk}%` : ""}</span>`, iconSize: [90, 30], iconAnchor: [45, 15] }),
-          title: `Inspect ${zone} ${ZONES[zone]} — illustrative sector`,
-          keyboard: true, zIndexOffset: 100,
+        sectors.current.push({ polygon, zone });
+        const buildPopup = () => {
+          const popup = document.createElement("div");
+          popup.className = "map-record-popup";
+          popupText(popup, "strong", `${gewog.name} gewog`);
+          popupText(popup, "p", `Code ${gewog.id} · ${gewog.areaKm2.toLocaleString("en-US")} km² inside GMC`);
+          if (gewog.partial) popupText(popup, "small", `Partial gewog: only ${gewog.pctInGmc}% lies inside the GMC.`);
+          if (mode === "prediction") popupText(popup, "p", `${risk}% modelled risk (demonstration)`);
+          if (actions.current.onSelect) popupAction(popup, "View gewog", () => actions.current.onSelect?.(zone));
+          return popup;
+        };
+        polygon.on("mouseover", () => polygon.setStyle({ fillOpacity: 0.25 }));
+        polygon.on("mouseout", () => polygon.setStyle({ fillOpacity: activeZoneRef.current === zone ? 0.25 : 0.12 }));
+        polygon.bindPopup(buildPopup, { maxWidth: 260 });
+        const large = gewog.areaKm2 >= LARGE_GEWOG_KM2;
+        const label = L.marker(gewog.label, {
+          icon: L.divIcon({
+            className: `map-gewog-label${large ? " large" : ""}`,
+            html: `<span>${mode === "prediction" ? `${gewog.name} · ${risk}%` : gewog.name}</span>`, iconSize: [0, 0],
+          }),
+          title: `Inspect ${gewog.name} gewog`, keyboard: true, zIndexOffset: 100,
         }).addTo(group);
-        const popup = document.createElement("div");
-        popup.className = "map-record-popup";
-        popupText(popup, "strong", `${zone} — ${ZONES[zone]}`);
-        popupText(popup, "small", "Illustrative monitoring sector. This is not an official boundary.");
-        if (mode === "prediction") popupText(popup, "p", `${risk}% modelled risk (demonstration)`);
-        if (actions.current.onSelect) popupAction(popup, "View zone", () => actions.current.onSelect?.(zone));
-        marker.bindPopup(popup, { maxWidth: 260 });
+        label.bindPopup(buildPopup, { maxWidth: 260 });
       }
     }
     if (showCameras) {
@@ -173,7 +190,7 @@ export function MapPanel({
         const popup = document.createElement("div");
         popup.className = "map-record-popup";
         popupText(popup, "strong", camera.id);
-        popupText(popup, "p", `${camera.zone} · ${camera.status}`);
+        popupText(popup, "p", `${zoneName(camera.zone)} · ${camera.status}`);
         popupText(popup, "small", `${formatCoordinates(location.coordinates)} · ${locationLabel(location.source)}`);
         if (actions.current.onCameraSelect) popupAction(popup, "View camera", () => actions.current.onCameraSelect?.(camera.id));
         marker.bindPopup(popup, { maxWidth: 260 });
@@ -216,12 +233,19 @@ export function MapPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaflet, layerKey]);
 
+  // Refit when the set of visible gewogs changes (for example a ranger's assignment).
+  const zonesKey = allowedZones.join(",");
+  useEffect(() => {
+    if (leaflet && map.current) map.current.fitBounds(boundsOf(allowedZones), { padding: [20, 20], animate: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaflet, zonesKey]);
+
   useEffect(() => {
     for (const { marker, ids } of markers.current) {
       marker.getElement()?.classList.toggle("selected", ids.includes(selectedSightingId ?? "") || ids.includes(selectedCameraId ?? ""));
     }
-    for (const { circle, zone } of sectors.current) {
-      circle.setStyle({ weight: activeZone === zone ? 3 : 2, fillOpacity: activeZone === zone ? 0.22 : 0.1 });
+    for (const { polygon, zone } of sectors.current) {
+      polygon.setStyle({ weight: activeZone === zone ? 4 : 2, fillOpacity: activeZone === zone ? 0.25 : 0.12 });
     }
   }, [leaflet, layerKey, selectedSightingId, selectedCameraId, activeZone]);
 
@@ -232,29 +256,33 @@ export function MapPanel({
     if (selected) map.current?.panInside(selected.marker.getLatLng(), { padding: [55, 55], animate: false });
   }, [leaflet, selectedSightingId, selectedCameraId]);
 
+  function resetView() {
+    map.current?.fitBounds(boundsOf(allowedZones), { padding: [20, 20], animate: false });
+  }
+
   function fitResults() {
     if (!map.current || !leaflet) return;
     const points: Coordinates[] = [
       ...(showSightings ? visibleSightings.map(s => sightingLocation(s, data.cameras).coordinates) : []),
       ...(showCameras ? visibleCameras.map(c => cameraLocation(c).coordinates) : []),
-      ...(showZones ? allowedZones.map(zone => DEMO_ZONE_CENTERS[zone]) : []),
+      ...(showZones ? boundsOf(allowedZones) : []),
     ];
     if (points.length) map.current.fitBounds(leaflet.latLngBounds(points), { padding: [48, 48], maxZoom: 15, animate: false });
     else map.current.setView(GELEPHU_CENTER, GELEPHU_ZOOM);
   }
 
   return (
-    <section className={`map-panel real-map map-${mode}`} aria-label="Interactive map of Gelephu">
+    <section className={`map-panel real-map map-${mode}`} aria-label="Interactive map of the Gelephu Mindfulness City gewogs">
       <div className="map-location-bar">
-        <span><MapPin size={16} /> <b>Gelephu, Bhutan</b></span>
-        <small>Real map · Demo overlays</small>
+        <span><MapPin size={16} /> <b>Gelephu Mindfulness City — gewogs</b></span>
+        <small>Real boundaries · Demo records</small>
       </div>
       <div className="map-canvas-wrap">
-        <div ref={container} className="map-canvas" aria-label="Gelephu map. Use arrow keys to pan and plus or minus to zoom." />
+        <div ref={container} className="map-canvas" data-labels={zoom >= LABEL_ALL_ZOOM ? "all" : "large"} aria-label="Gelephu gewog map. Use arrow keys to pan and plus or minus to zoom." />
         <div className="real-map-controls" aria-label="Map controls">
           <button type="button" aria-label="Zoom in" disabled={!leaflet || zoom >= 19} onClick={() => map.current?.zoomIn()}><Plus size={20} /></button>
           <button type="button" aria-label="Zoom out" disabled={!leaflet || zoom <= 3} onClick={() => map.current?.zoomOut()}><Minus size={20} /></button>
-          <button type="button" aria-label="Reset map to Gelephu" title="Reset map to Gelephu" disabled={!leaflet} onClick={() => map.current?.setView(GELEPHU_CENTER, GELEPHU_ZOOM, { animate: false })}><LocateFixed size={19} /></button>
+          <button type="button" aria-label="Reset map to your gewogs" title="Reset map to your gewogs" disabled={!leaflet} onClick={resetView}><LocateFixed size={19} /></button>
           <button type="button" aria-label="Fit visible map results" title="Fit visible results" disabled={!leaflet} onClick={fitResults}><Maximize size={18} /></button>
           <button type="button" aria-label="Map layers" aria-expanded={layersOpen} onClick={() => setLayersOpen(value => !value)}><Layers size={19} /></button>
         </div>
@@ -263,13 +291,13 @@ export function MapPanel({
             <div><strong>Map layers</strong><button type="button" className="icon-button" aria-label="Close map layers" onClick={() => setLayersOpen(false)}><X size={18} /></button></div>
             <label><input type="checkbox" checked={showSightings} onChange={event => setShowSightings(event.target.checked)} /> Sightings</label>
             <label><input type="checkbox" checked={showCameras} onChange={event => setShowCameras(event.target.checked)} /> Cameras</label>
-            <label><input type="checkbox" checked={showZones} onChange={event => setShowZones(event.target.checked)} /> Illustrative GE sectors</label>
-            <small>Sector circles and sample positions are not surveyed boundaries or live detections.</small>
+            <label><input type="checkbox" checked={showZones} onChange={event => setShowZones(event.target.checked)} /> Gewog boundaries and names</label>
+            <small>Gewog boundaries are the supplied GMC data (simplified for display). Sample positions are not live detections.</small>
           </div>
         )}
         {(loading || error) && (
           <div className={`map-load-status ${error ? "map-load-error" : ""}`} role="status">
-            <span>{error || "Loading Gelephu map…"}</span>
+            <span>{error || "Loading map…"}</span>
             {error && tiles.current && <button type="button" onClick={() => { setError(""); setLoading(true); tiles.current?.redraw(); }}><RefreshCw size={15} /> Retry</button>}
           </div>
         )}
@@ -278,7 +306,7 @@ export function MapPanel({
         <div className="real-map-legend">
           {showSightings && <span><i className="legend-sighting" /> Sightings ({visibleSightings.length})</span>}
           {showCameras && <><span><i className="legend-online" /> Camera online</span><span><i className="legend-offline" /> Camera offline</span></>}
-          {showZones && <span><i className="legend-sector" /> Demo sector</span>}
+          {showZones && <span><i className="legend-sector" /> Gewog</span>}
         </div>
         {filterLabel && <span className="map-results-label">{filterLabel}</span>}
         <span className="map-gesture-hint">Drag to pan · Pinch or use +/− to zoom</span>

@@ -1,4 +1,5 @@
 import type { CameraRecord, Sighting, Zone } from "./data";
+import { GEWOGS, type Gewog } from "./gewogs";
 
 export type Coordinates = [number, number];
 export interface MapLocation {
@@ -6,9 +7,19 @@ export interface MapLocation {
   source: "demo" | "camera" | "recorded";
 }
 
-// Gelephu town centre; the basemap supplies real roads and geography.
-export const GELEPHU_CENTER: Coordinates = [26.87056, 90.48556];
-export const GELEPHU_ZOOM = 12;
+// Bounds of the 17 gewogs of the Gelephu Mindfulness City area.
+export function boundsOf(zones?: readonly string[]): [Coordinates, Coordinates] {
+  const chosen = GEWOGS.filter(g => !zones || zones.includes(g.id));
+  const rings = (chosen.length ? chosen : GEWOGS).flatMap(g => g.ring);
+  const lats = rings.map(p => p[0]), lngs = rings.map(p => p[1]);
+  return [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]];
+}
+export const GMC_BOUNDS = boundsOf();
+export const GELEPHU_CENTER: Coordinates = [
+  (GMC_BOUNDS[0][0] + GMC_BOUNDS[1][0]) / 2,
+  (GMC_BOUNDS[0][1] + GMC_BOUNDS[1][1]) / 2,
+];
+export const GELEPHU_ZOOM = 9;
 export const MAP_TILE_URL =
   process.env.NEXT_PUBLIC_MAP_TILE_URL ||
   "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -16,29 +27,44 @@ export const MAP_TILE_ATTRIBUTION =
   process.env.NEXT_PUBLIC_MAP_ATTRIBUTION ||
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
-// Illustrative monitoring sectors, not surveyed or administrative boundaries.
-export const DEMO_ZONE_CENTERS: Record<Zone, Coordinates> = {
-  "GE-1": [26.879, 90.477],
-  "GE-2": [26.8815, 90.516],
-  "GE-3": [26.8585, 90.502],
-  "GE-4": [26.915, 90.495],
-};
-export const DEMO_ZONE_RISK: Record<Zone, number> = {
-  "GE-1": 28, "GE-2": 58, "GE-3": 72, "GE-4": 16,
-};
+export const GEWOG_BY_ID: Record<string, Gewog> = Object.fromEntries(GEWOGS.map(g => [g.id, g]));
 
-export function demoCoordinates(zone: Zone, id: string): Coordinates {
+function hashOf(text: string) {
   let hash = 0;
-  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  for (const character of text) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
   hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b) >>> 0;
-  hash = (hash ^ (hash >>> 16)) >>> 0;
-  const center = DEMO_ZONE_CENTERS[zone];
-  const angle = (hash % 360) * Math.PI / 180;
-  const radius = 0.002 + ((hash >>> 8) % 70) / 10000;
-  return [
-    Number((center[0] + Math.sin(angle) * radius).toFixed(6)),
-    Number((center[1] + Math.cos(angle) * radius).toFixed(6)),
-  ];
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
+// Demonstration risk values (not model output), one per gewog and stable between loads.
+export const DEMO_ZONE_RISK: Record<Zone, number> = Object.fromEntries(
+  GEWOGS.map(g => [g.id, 8 + (hashOf("risk" + g.id) % 80)]),
+);
+export const DEMO_ZONE_TREND: Record<Zone, "Increasing" | "Stable" | "Decreasing"> = Object.fromEntries(
+  GEWOGS.map(g => [g.id, (["Increasing", "Stable", "Decreasing"] as const)[hashOf("trend" + g.id) % 3]]),
+);
+
+function insideRing([lat, lng]: Coordinates, ring: [number, number][]) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [lati, lngi] = ring[i], [latj, lngj] = ring[j];
+    if ((lati > lat) !== (latj > lat) && lng < (lngj - lngi) * (lat - lati) / (latj - lati) + lngi) inside = !inside;
+  }
+  return inside;
+}
+
+/** A repeatable sample position that is always inside the gewog polygon. */
+export function demoCoordinates(zone: Zone, id: string): Coordinates {
+  const gewog = GEWOG_BY_ID[zone] ?? GEWOGS[0];
+  const [min, max] = boundsOf([gewog.id]);
+  let seed = hashOf(id);
+  for (let attempt = 0; attempt < 60; attempt++) {
+    seed = hashOf(String(seed) + attempt);
+    const lat = min[0] + (max[0] - min[0]) * ((seed & 0xffff) / 0xffff);
+    const lng = min[1] + (max[1] - min[1]) * (((seed >>> 16) & 0xffff) / 0xffff);
+    if (insideRing([lat, lng], gewog.ring)) return [Number(lat.toFixed(6)), Number(lng.toFixed(6))];
+  }
+  return gewog.label;
 }
 
 export function validCoordinates(lat: unknown, lng: unknown): Coordinates | null {

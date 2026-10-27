@@ -6,10 +6,11 @@ import {
   shortDate,
   SPECIES,
   TODAY,
+  ZONES,
   type Sighting,
   type Zone,
 } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { useApp, useAssignedZones } from "@/components/context";
 import {
   Animal,
   Badge,
@@ -29,6 +30,7 @@ export default function Sightings() {
   const { role, data, setData, selectedId, setSelectedId, notify, dialog } =
     useApp();
   const visible = useVisibleSightings();
+  const zones = useAssignedZones();
   const [q, setQ] = useState(""),
     [species, setSpecies] = useState("all"),
     [zone, setZone] = useState("all"),
@@ -46,7 +48,7 @@ export default function Sightings() {
       (status === "all" || s.review === status) &&
       (!from || s.date >= from) &&
       (!to || s.date <= to) &&
-      `${s.species} ${s.camera} ${s.zone}`
+      `${s.species} ${s.camera} ${ZONES[s.zone]}`
         .toLowerCase()
         .includes(q.toLowerCase()),
   );
@@ -69,17 +71,21 @@ export default function Sightings() {
     notify(`Sighting ${review.toLowerCase()}. Audit note saved locally.`);
   }
   function fieldReport() {
+    if (!zones.length) {
+      notify("No gewog is assigned to you yet. Ask an admin to assign one.");
+      return;
+    }
     dialog({
       title: "Report field sighting",
       description:
-        "Add a demonstration observation to your assigned zone. This form stores data in this browser.",
+        "Add a demonstration observation to one of your assigned gewogs. This form stores data in this browser.",
       fields: [
         { name: "species", label: "Species", type: "select", options: SPECIES },
         {
           name: "zone",
-          label: "Zone",
+          label: "Gewog",
           type: "select",
-          options: ["GE-1", "GE-2"],
+          options: zones.map((z) => ({ value: z, label: ZONES[z] })),
         },
         { name: "date", label: "Date", type: "date", value: TODAY },
         { name: "note", label: "Field notes", type: "textarea" },
@@ -111,7 +117,7 @@ export default function Sightings() {
         "Species",
         "Date",
         "Time",
-        "Zone",
+        "Gewog",
         "Camera",
         "Confidence",
         "Review",
@@ -122,7 +128,7 @@ export default function Sightings() {
         s.species,
         s.date,
         s.time,
-        s.zone,
+        ZONES[s.zone],
         s.camera,
         s.confidence,
         s.review,
@@ -138,7 +144,7 @@ export default function Sightings() {
         description={
           role === "admin"
             ? "Search, filter and review all wildlife detections"
-            : "Search and review wildlife detections in your assigned zones (GE-1, GE-2)"
+            : "Search and review wildlife detections in your assigned gewogs"
         }
       >
         <button onClick={exportRows}>
@@ -151,7 +157,7 @@ export default function Sightings() {
           <Search size={16} />
           <input
             aria-label="Search sightings"
-            placeholder="Search species, zone or camera…"
+            placeholder="Search species, gewog or camera…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
@@ -225,7 +231,7 @@ export default function Sightings() {
                   <th aria-label="Selection" />
                   <th>Species</th>
                   <th>Date & Time</th>
-                  <th>Zone</th>
+                  <th>Gewog</th>
                   <th>Source</th>
                   <th>{role === "admin" ? "Review Status" : "Confidence"}</th>
                 </tr>
@@ -259,7 +265,7 @@ export default function Sightings() {
                     <td>
                       {shortDate(s.date)}, {s.time}
                     </td>
-                    <td>{s.zone}</td>
+                    <td>{ZONES[s.zone]}</td>
                     <td>{s.camera}</td>
                     <td>
                       {role === "admin" ? (

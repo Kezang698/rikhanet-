@@ -1,16 +1,14 @@
 "use client";
 import { useMemo } from "react";
 import { SPECIES, ZONES } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { useApp, useAssignedZones } from "@/components/context";
 
 export function useVisibleSightings() {
-  const { role, data } = useApp();
+  const { data } = useApp();
+  const zones = useAssignedZones();
   return useMemo(
-    () =>
-      data.sightings.filter(
-        (s) => role === "admin" || s.zone === "GE-1" || s.zone === "GE-2",
-      ),
-    [role, data.sightings],
+    () => data.sightings.filter((s) => zones.includes(s.zone)),
+    [zones, data.sightings],
   );
 }
 export function ZoneSelect({
@@ -23,24 +21,23 @@ export function ZoneSelect({
   all?: boolean;
 }) {
   const { role } = useApp();
+  const zones = useAssignedZones();
   return (
     <select
-      aria-label="Filter by zone"
+      aria-label="Filter by gewog"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       {all && (
         <option value="all">
-          {role === "ranger" ? "GE-1, GE-2 (assigned)" : "All Zones"}
+          {role === "ranger" ? "All my gewogs" : "All Gewogs"}
         </option>
       )}
-      {Object.entries(ZONES)
-        .filter(([z]) => role === "admin" || z === "GE-1" || z === "GE-2")
-        .map(([z, name]) => (
-          <option key={z} value={z}>
-            {z} — {name}
-          </option>
-        ))}
+      {zones.map((z) => (
+        <option key={z} value={z}>
+          {ZONES[z]}
+        </option>
+      ))}
     </select>
   );
 }

@@ -7,7 +7,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { shortDate, ZONES } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { useApp, useAssignedZones } from "@/components/context";
 import { Animal, Card, Heading, MapPanel } from "@/components/ui";
 import { useVisibleSightings } from "@/components/filters";
 
@@ -15,22 +15,24 @@ export default function Overview() {
   const { role, data, go, setSelectedId } = useApp();
   const ranger = role === "ranger";
   const sightings = useVisibleSightings();
-  const alerts = data.alerts.filter(
-    (a) => !ranger || ["GE-1", "GE-2"].includes(a.zone),
-  );
+  const zones = useAssignedZones();
+  const alerts = data.alerts.filter((a) => zones.includes(a.zone));
   const online = data.cameras.filter(
-    (c) =>
-      c.status === "Online" && (!ranger || ["GE-1", "GE-2"].includes(c.zone)),
+    (c) => c.status === "Online" && zones.includes(c.zone),
   ).length;
-  const total = data.cameras.filter(
-    (c) => !ranger || ["GE-1", "GE-2"].includes(c.zone),
-  ).length;
+  const total = data.cameras.filter((c) => zones.includes(c.zone)).length;
+  const zoneList = zones.map((z) => ZONES[z]).join(", ");
+  const latestElephant = sightings.find((s) => s.species === "Asian Elephant");
+  const feedCamera = data.cameras.find((c) => c.id === "CAM-018");
+  const feedSighting = data.sightings.find((s) => s.id === "S-002");
+  const feedAlert = data.alerts[0];
+  const shown = (z?: string) => !!z && zones.includes(z);
   const stats = ranger
     ? [
         {
-          title: "Assigned Zones",
-          value: "GE-1, GE-2",
-          note: "Gelephu Core, East Corridor",
+          title: "Assigned Gewogs",
+          value: zones.length ? `${zones.length}` : "None yet",
+          note: zones.length ? zoneList : "The admin has not assigned a gewog",
           icon: MapPin,
           view: "map" as const,
         },
@@ -44,15 +46,19 @@ export default function Overview() {
         },
         {
           title: "Latest Elephant Sighting",
-          value: "28 Sep 2026, 06:24",
-          note: "GE-2 — East Corridor · CAM-012",
+          value: latestElephant
+            ? `${shortDate(latestElephant.date)}, ${latestElephant.time}`
+            : "None recorded",
+          note: latestElephant
+            ? `${ZONES[latestElephant.zone]} · ${latestElephant.camera}`
+            : "In your gewogs",
           icon: null,
           view: "sightings" as const,
         },
         {
           title: "Cameras Online",
           value: `${online} / ${total}`,
-          note: "Your zones: GE-1, GE-2",
+          note: "In your gewogs",
           icon: Camera,
           view: "cameras" as const,
         },
@@ -97,8 +103,8 @@ export default function Overview() {
         title={ranger ? "Ranger Overview" : "Admin Overview"}
         description={
           ranger
-            ? "Your assigned zones and latest wildlife activity"
-            : "System-wide summary for Gelephu and surrounding landscape"
+            ? "Your assigned gewogs and latest wildlife activity"
+            : "System-wide summary for the 17 gewogs of the Gelephu Mindfulness City area"
         }
       />
       <div className="stats-grid">
@@ -146,8 +152,8 @@ export default function Overview() {
         <Card
           title={
             ranger
-              ? "Assigned Zones and Recent Activity"
-              : "Recent Activity Around Gelephu"
+              ? "Assigned Gewogs and Recent Activity"
+              : "Recent Activity Across the Gewogs"
           }
           className="map-card"
         >
@@ -165,7 +171,7 @@ export default function Overview() {
           />
         </Card>
         <Card
-          title={ranger ? "Recent Events (GE-1, GE-2)" : "Recent Activity Feed"}
+          title={ranger ? "Recent Events (your gewogs)" : "Recent Activity Feed"}
           action={
             <button className="text-button" onClick={() => go("sightings")}>
               View all
@@ -185,7 +191,7 @@ export default function Overview() {
                 <span>
                   <b>{s.species} detected</b>
                   <small>
-                    {s.zone} — {ZONES[s.zone]}
+                    {ZONES[s.zone]}
                   </small>
                   <small>
                     {shortDate(s.date)}, {s.time}
@@ -194,35 +200,41 @@ export default function Overview() {
                 <ChevronRight size={16} />
               </button>
             ))}
-            <button onClick={() => go("cameras")}>
-              <Camera size={34} />
-              <span>
-                <b>Camera CAM-018 back online</b>
-                <small>GE-1 — Gelephu Core</small>
-                <small>28 Sep 2026, 02:03</small>
-              </span>
-            </button>
-            <button
-              onClick={() => {
-                setSelectedId("S-002");
-                go("sightings");
-              }}
-            >
-              <Animal species="Wild Boar" size={35} />
-              <span>
-                <b>Wild Boar detected</b>
-                <small>GE-1 — Gelephu Core</small>
-                <small>28 Sep 2026, 01:16</small>
-              </span>
-            </button>
-            <button onClick={() => go("alerts")}>
-              <AlertTriangle size={38} className="red" />
-              <span>
-                <b>New alert: Elephant near settlement</b>
-                <small>GE-2 — East Corridor</small>
-                <small>28 Sep 2026, 06:24</small>
-              </span>
-            </button>
+            {feedCamera && shown(feedCamera.zone) && (
+              <button onClick={() => go("cameras")}>
+                <Camera size={34} />
+                <span>
+                  <b>Camera CAM-018 back online</b>
+                  <small>{ZONES[feedCamera.zone]}</small>
+                  <small>28 Sep 2026, 02:03</small>
+                </span>
+              </button>
+            )}
+            {feedSighting && shown(feedSighting.zone) && (
+              <button
+                onClick={() => {
+                  setSelectedId("S-002");
+                  go("sightings");
+                }}
+              >
+                <Animal species="Wild Boar" size={35} />
+                <span>
+                  <b>Wild Boar detected</b>
+                  <small>{ZONES[feedSighting.zone]}</small>
+                  <small>28 Sep 2026, 01:16</small>
+                </span>
+              </button>
+            )}
+            {feedAlert && shown(feedAlert.zone) && (
+              <button onClick={() => go("alerts")}>
+                <AlertTriangle size={38} className="red" />
+                <span>
+                  <b>New alert: Elephant near settlement</b>
+                  <small>{ZONES[feedAlert.zone]}</small>
+                  <small>28 Sep 2026, 06:24</small>
+                </span>
+              </button>
+            )}
           </div>
         </Card>
       </div>

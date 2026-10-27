@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   defaultProfiles,
+  isZone,
   seedState,
   type DemoState,
   type Role,
@@ -66,10 +67,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const close = useCallback(() => setSpec(null), []);
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("rikhanet-demo-v1");
+      const saved = localStorage.getItem("rikhanet-demo-v2");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.sightings && parsed.rules && parsed.config) {
+        // Data saved before gewogs became zones (GE-1…GE-4) is ignored.
+        const current =
+          Array.isArray(parsed.sightings) &&
+          parsed.sightings.every((s: { zone: string }) => isZone(s.zone)) &&
+          Array.isArray(parsed.rangers) &&
+          typeof parsed.currentRangerId === "string";
+        if (current && parsed.rules && parsed.config) {
           const defaults = defaultProfiles();
           setData({
             ...parsed,
@@ -93,7 +100,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (ready)
       try {
-        localStorage.setItem("rikhanet-demo-v1", JSON.stringify(data));
+        localStorage.setItem("rikhanet-demo-v2", JSON.stringify(data));
       } catch {
         notify(
           "Browser storage is unavailable. Changes will last until this page closes.",

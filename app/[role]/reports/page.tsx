@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { CalendarDays, Database, Download } from "lucide-react";
 import { csvDownload, shortDate, SPECIES, TODAY, ZONES } from "@/lib/data";
-import { useApp } from "@/components/context";
+import { useApp, useAssignedZones } from "@/components/context";
 import { Animal, Badge, Card, Empty, Heading, Severity } from "@/components/ui";
 import {
   SpeciesSelect,
@@ -38,6 +38,7 @@ const COLOURS = [
 export default function Reports() {
   const { role, data, notify } = useApp();
   const all = useVisibleSightings();
+  const zones = useAssignedZones();
   const [from, setFrom] = useState("2026-09-22"),
     [to, setTo] = useState(TODAY),
     [species, setSpecies] = useState("all"),
@@ -77,7 +78,7 @@ export default function Reports() {
   }));
   const alerts = data.alerts.filter(
     (a) =>
-      (role === "admin" || ["GE-1", "GE-2"].includes(a.zone)) &&
+      zones.includes(a.zone) &&
       a.date >= applied.from &&
       a.date <= applied.to &&
       (applied.zone === "all" || a.zone === applied.zone) &&
@@ -92,10 +93,10 @@ export default function Reports() {
     csvDownload("rikhanet-report.csv", [
       ["Report period", `${applied.from} to ${applied.to}`],
       ["Data source", "Browser demonstration records"],
-      ["Species", "GE-1", "GE-2", "GE-3", "GE-4", "Total"],
+      ["Species", ...zones.map((z) => ZONES[z]), "Total"],
       ...animals.map((sp) => [
         sp,
-        ...Object.keys(ZONES).map(
+        ...zones.map(
           (z) => rows.filter((s) => s.zone === z && s.species === sp).length,
         ),
         rows.filter((s) => s.species === sp).length,
@@ -110,7 +111,7 @@ export default function Reports() {
         description={
           role === "admin"
             ? "View trends and generate reports on wildlife activity, alerts and system performance."
-            : "View activity summaries for your assigned zones (GE-1, GE-2) and your alert response history"
+            : "View activity summaries for your assigned gewogs and your alert response history"
         }
       />
       <div className="filter-bar report-filters">
@@ -175,7 +176,7 @@ export default function Reports() {
           title={
             role === "admin"
               ? "Wildlife sightings trend"
-              : "Wildlife Activity (GE-1, GE-2)"
+              : "Wildlife Activity (your gewogs)"
           }
         >
           <div className="chart chart-trend">
@@ -241,12 +242,13 @@ export default function Reports() {
             <p className="meta">
               {shortDate(applied.from)} – {shortDate(applied.to)}
             </p>
-            <table>
+            <div className="table-scroll"><table>
               <thead>
                 <tr>
                   <th>Species</th>
-                  <th>GE-1</th>
-                  <th>GE-2</th>
+                  {zones.map((z) => (
+                    <th key={z}>{ZONES[z]}</th>
+                  ))}
                   <th>Total</th>
                 </tr>
               </thead>
@@ -259,7 +261,7 @@ export default function Reports() {
                         {sp}
                       </span>
                     </td>
-                    {["GE-1", "GE-2"].map((z) => (
+                    {zones.map((z) => (
                       <td key={z}>
                         {
                           rows.filter((s) => s.species === sp && s.zone === z)
@@ -273,7 +275,7 @@ export default function Reports() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </Card>
         )}
       </div>
@@ -363,7 +365,7 @@ export default function Reports() {
                 <tr>
                   <th>Date & Time</th>
                   <th>Species</th>
-                  <th>Zone</th>
+                  <th>Gewog</th>
                   <th>Alert Type</th>
                   <th>Severity</th>
                   <th>My Response</th>
@@ -377,7 +379,7 @@ export default function Reports() {
                       {shortDate(a.date)}, {a.time}
                     </td>
                     <td>{a.species}</td>
-                    <td>{a.zone}</td>
+                    <td>{ZONES[a.zone]}</td>
                     <td>{a.trigger}</td>
                     <td>
                       <Severity value={a.severity} />
