@@ -134,7 +134,12 @@ If `code` is unavailable, open VS Code and choose File > Open Folder > Documents
 | File                        | What to edit                                                       |
 | --------------------------- | ------------------------------------------------------------------ |
 | `app/globals.css`           | Colours, spacing, typography, grid layout and responsive rules     |
-| `components/RiKhaNET.tsx`   | Login, navigation, role switching, dialogs and saved demo state    |
+| `app/login/`                | Sign-in route (`/login`)                                           |
+| `app/[role]/<page>/`        | One folder per page; each `page.tsx` holds that page's code and serves both `/admin/<page>` and `/ranger/<page>` |
+| `components/filters.tsx`    | Zone/species selects and visible-sightings hook shared by several pages |
+| `components/AppProvider.tsx`| Role, saved demo state, dialogs and toasts shared across routes    |
+| `components/Shell.tsx`      | Sidebar, topbar, role guard and page titles, used by `app/[role]/layout.tsx`|
+| `components/LoginScreen.tsx`| Login form                                                         |
 | `components/monitoring.tsx` | Overview, Sightings, Wildlife Map, Predictions, Alerts and Cameras |
 | `components/management.tsx` | Reports, Data Review, Rangers, Rules, Settings and My Account      |
 | `components/ui.tsx`         | Shared cards, map viewports, badges, photo views and controls      |
@@ -169,7 +174,7 @@ Press Ctrl+C in the terminal to stop the app. Dependencies need to be installed 
 | Settings      |              |
 | My Account    |              |
 
-The sidebar changes by role. Ranger records are limited to GE-1 and GE-2. Browser back/forward navigation works through hash URLs such as `#/admin/sightings`.
+The sidebar changes by role. Ranger records are limited to GE-1 and GE-2. Each page has its own URL such as `/admin/sightings`, so browser back/forward and page reloads work normally.
 
 ## Working demo interactions
 

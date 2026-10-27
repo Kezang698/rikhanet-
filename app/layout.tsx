@@ -4,8 +4,8 @@ import "./globals.css";
 import "./theme.css";
 import "./maps.css";
 import "./responsive.css";
+import { AppProvider } from "@/components/AppProvider";
 export const metadata: Metadata = {
-  title: "RiKhaNET | Wildlife monitoring",
   description:
     "RiKhaNET frontend demonstration for the wildlife detection and prediction proposal.",
 };
@@ -16,7 +16,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppProvider>{children}</AppProvider>
+      </body>
     </html>
   );
 }

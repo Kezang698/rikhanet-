@@ -1,4 +1,5 @@
-import RiKhaNET from "@/components/RiKhaNET";
+import { redirect } from "next/navigation";
+
 export default function Page() {
-  return <RiKhaNET />;
+  redirect("/login");
 }
