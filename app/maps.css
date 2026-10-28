@@ -140,6 +140,8 @@
 }
 .map-canvas[data-labels="large"] .map-gewog-label:not(.large) { display: none; }
 .map-gewog-label:focus-visible > span { outline: 3px solid #075b47; outline-offset: 2px; background: #fff; }
+.map-record-marker.source-image-marker, .real-map-legend .legend-source { background: #095942; }
+.map-forecast-status { display: block; margin-top: 8px; font-size: var(--font-size-caption); color: #3c5649; line-height: 1.5; }
 .map-sector-label:focus-visible { outline: 3px solid #075b47; outline-offset: 3px; }
 .map-sector-label { display: grid; place-items: center; background: transparent; border: 0; }
 .map-sector-label > span { background: #ffffffed; color: #075b47; border: 1px dashed #0b6b50; border-radius: 4px; padding: 5px 7px; font-size: var(--font-size-caption); font-weight: 700; white-space: nowrap; }

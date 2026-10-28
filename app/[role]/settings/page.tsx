@@ -10,9 +10,14 @@ import {
 import { seedState } from "@/lib/data";
 import { useApp } from "@/components/context";
 import { Badge, Card, Heading } from "@/components/ui";
+import { DatabaseSettings } from "@/components/DatabaseWorkflows";
 
 export default function SettingsPage() {
-  const { data, setData, dialog, notify, go } = useApp();
+  const {backend}=useApp();
+  return backend.mode==="api"?<DatabaseSettings/>:<DemoSettings/>;
+}
+function DemoSettings() {
+  const { data, setData, dialog, notify, go, backend } = useApp();
   function configure(kind: string) {
     const field =
       kind === "detection"
@@ -218,21 +223,21 @@ export default function SettingsPage() {
           }
         >
           <Badge tone="yellow">Planned</Badge>
-          <p>Connection to camera network and data storage.</p>
+          <p>{backend.mode === "api" ? "Sightings and prediction results use the PostgreSQL API." : "Connection to camera network and data storage."}</p>
           <dl className="details">
             <dt>Camera network</dt>
             <dd>Planned (12/12 cameras)</dd>
             <dt>Storage</dt>
             <dd>Planned</dd>
             <dt>Database</dt>
-            <dd>Planned</dd>
+            <dd>{backend.mode === "api" ? backend.status === "connected" ? "PostgreSQL connected" : "Waiting for API connection" : "Planned"}</dd>
           </dl>
           <button
             onClick={() =>
               dialog({
                 title: "Connection settings",
                 description:
-                  "Live camera, PostgreSQL, PostGIS and AI service connections will be added with the backend. This frontend uses browser demonstration data only.",
+                  backend.mode === "api" ? "The local API stores sightings in PostgreSQL and reads prediction results. TFT inference, authentication and ranger alert delivery need further integration. Camera setup and account preferences are stored in this browser." : "This mode uses browser demonstration data. Switch NEXT_PUBLIC_DATA_MODE to api and restart Next.js to connect PostgreSQL.",
                 submit: "Close",
               })
             }
@@ -243,6 +248,7 @@ export default function SettingsPage() {
       </div>
       <button
         className="text-button reset-demo"
+        disabled={backend.mode === "api"}
         onClick={() =>
           dialog({
             title: "Reset demonstration data",

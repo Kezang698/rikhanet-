@@ -5,8 +5,13 @@ import { isZone, ZONE_IDS, ZONES, type RangerRecord, type Zone } from "@/lib/dat
 import { useApp } from "@/components/context";
 import { Badge, Card, Empty, Heading, Status } from "@/components/ui";
 import { ZoneSelect } from "@/components/filters";
+import { DatabaseRangers } from "@/components/DatabaseWorkflows";
 
 export default function Rangers() {
+  const {backend}=useApp();
+  return backend.mode==="api"?<DatabaseRangers/>:<DemoRangers/>;
+}
+function DemoRangers() {
   const { data, setData, dialog, notify } = useApp();
   const [q, setQ] = useState(""),
     [zone, setZone] = useState("all"),

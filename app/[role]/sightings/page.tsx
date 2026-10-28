@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Check, Download, Flag, MapPin, Plus, Search, X } from "lucide-react";
 import {
@@ -11,6 +12,7 @@ import {
   type Zone,
 } from "@/lib/data";
 import { useApp, useAssignedZones } from "@/components/context";
+import { ReviewActions } from "@/components/DatabaseWorkflows";
 import {
   Animal,
   Badge,
@@ -27,8 +29,10 @@ import {
 } from "@/components/filters";
 
 export default function Sightings() {
-  const { role, data, setData, selectedId, setSelectedId, notify, dialog } =
+  const { role, data, setData, selectedId, setSelectedId, notify, dialog, backend, enrichSighting, go } =
     useApp();
+  const database = backend.mode === "api";
+  const [enriching, setEnriching] = useState(false);
   const visible = useVisibleSightings();
   const zones = useAssignedZones();
   const [q, setQ] = useState(""),
@@ -37,7 +41,7 @@ export default function Sightings() {
     [source, setSource] = useState("all"),
     [status, setStatus] = useState("all"),
     [page, setPage] = useState(1),
-    [from, setFrom] = useState("2026-09-22"),
+    [from, setFrom] = useState(database ? "" : "2026-09-22"),
     [to, setTo] = useState(""),
     [note, setNote] = useState("");
   const filtered = visible.filter(
@@ -71,6 +75,10 @@ export default function Sightings() {
     notify(`Sighting ${review.toLowerCase()}. Audit note saved locally.`);
   }
   function fieldReport() {
+    if (database) {
+      go("reports");
+      return;
+    }
     if (!zones.length) {
       notify("No gewog is assigned to you yet. Ask an admin to assign one.");
       return;
@@ -170,6 +178,7 @@ export default function Sightings() {
           onChange={(e) => setSource(e.target.value)}
         >
           <option value="all">All Sources</option>
+          {database && <option>Stored observation</option>}
           <option>Camera trap</option>
           <option>Ranger report</option>
           <option>CSV upload</option>
@@ -279,7 +288,7 @@ export default function Sightings() {
                                 : "green"
                           }
                         >
-                          {s.review}
+                          {s.detectionPending ? "Awaiting detection" : s.review}
                         </Badge>
                       ) : s.source === "Ranger report" ? (
                         "—"
@@ -301,7 +310,22 @@ export default function Sightings() {
         </Card>
         {selected && (
           <Details sighting={selected}>
-            {role === "admin" ? (
+            {database ? (
+              <>
+                <Link className="primary prediction-link" href={`/${role}/predictions?detection=${selected.id}`}>View image prediction on map</Link>
+                <p>{selected.detectionPending ? "Waiting for the external detector to supply species and confidence." : selected.enriched ? "Detection and weather are stored in PostgreSQL." : "Detection saved. Weather enrichment is pending."}</p>
+                <button disabled={enriching || selected.detectionPending} onClick={async () => {
+                  setEnriching(true);
+                  try {
+                    const result = await enrichSighting(selected.id);
+                    notify(result.skipped ? "Discarded sighting skipped." : result.prediction_status === "unavailable" ? "Weather saved. TFT predictions await integration and validation." : "Sighting enriched.");
+                  } catch (error) { notify(error instanceof Error ? error.message : "Enrichment failed"); }
+                  finally { setEnriching(false); }
+                }}>{enriching ? "Enriching…" : selected.enriched ? "Check predictions" : "Enrich sighting"}</button>
+                <ReviewActions key={selected.id} id={selected.id} note={selected.note}/>
+                <button onClick={fieldReport}>Create a field report</button>
+              </>
+            ) : role === "admin" ? (
               <>
                 <div className="button-row">
                   <button

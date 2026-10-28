@@ -7,7 +7,7 @@ import sys
 from predict import load_model, predict_bytes
 
 PROTOCOL_MARKER = "@@RIKHANET@@"
-PROTOCOL_VERSION = 2
+PROTOCOL_VERSION = 3
 
 
 def emit(payload: dict) -> None:

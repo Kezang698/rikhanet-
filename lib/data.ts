@@ -67,6 +67,11 @@ export interface Sighting {
   flagged?: boolean;
   lat?: number;
   lng?: number;
+  persisted?: boolean;
+  detectionPending?: boolean;
+  enriched?: boolean;
+  timestamp?: string;
+  imageUrl?: string;
 }
 export interface AlertRecord {
   id: string;

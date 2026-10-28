@@ -173,10 +173,11 @@ export function Heading({
   );
 }
 export function DateButton() {
+  const { backend } = useApp();
   return (
     <span className="date-label">
       <CalendarDays size={17} />
-      {DATE_LABEL}
+      {backend.mode === "api" ? new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Thimphu", day: "numeric", month: "short", year: "numeric" }) : DATE_LABEL}
     </span>
   );
 }
@@ -311,6 +312,20 @@ export function WildlifeImage({
   box?: boolean;
   label?: boolean;
 }) {
+  const [failedImage, setFailedImage] = useState("");
+  if (sighting?.persisted && sighting.imageUrl && failedImage !== sighting.imageUrl) return (
+    <div className="wildlife-image stored-image">
+      <img src={sighting.imageUrl} alt={`${sighting.species} recorded by ${sighting.camera}`} onError={() => setFailedImage(sighting.imageUrl ?? "")} />
+      <div className="image-stamp">{sighting.camera}<span>{sighting.date} {sighting.time}</span></div>
+    </div>
+  );
+  if (sighting?.persisted) return (
+    <div className="stored-image-placeholder" role="img" aria-label="No image stored for this sighting">
+      <Camera size={28} />
+      <span>{sighting.imageUrl ? "Stored image unavailable" : "No image stored"}</span>
+      <small>{sighting.camera} · {sighting.date} {sighting.time}</small>
+    </div>
+  );
   const species = sighting?.species ?? "Asian Elephant";
   let source = 8,
     rect: [number, number, number, number] = [1290, 159, 222, 133];
@@ -469,7 +484,7 @@ export function Details({
         <dd>
           {formatCoordinates(location.coordinates)}
           <br />
-          <small className="muted">{locationLabel(location.source)}</small>
+          <small className="muted">{sighting.persisted ? "Stored coordinates; laptop-camera GPS may be synthetic" : locationLabel(location.source)}</small>
         </dd>
         <dt>Gewog</dt>
         <dd>
@@ -481,14 +496,11 @@ export function Details({
         </dd>
         <dt>Confidence</dt>
         <dd>
-          {sighting.confidence.toFixed(2)} (
-          {sighting.confidence >= 0.8 ? "High" : "Review suggested"})
+          {sighting.detectionPending ? "Awaiting external detection" : <>{sighting.confidence.toFixed(2)} ({sighting.confidence >= 0.8 ? "High" : "Review suggested"})</>}
         </dd>
         <dt>Bounding Box</dt>
         <dd>
-          x: 428, y: 112, w: 356, h: 298
-          <br />
-          <span className="muted">(illustrative image coordinates)</span>
+          {sighting.persisted ? "Not stored" : <>x: 428, y: 112, w: 356, h: 298<br /><span className="muted">(illustrative image coordinates)</span></>}
         </dd>
       </dl>
       {children}

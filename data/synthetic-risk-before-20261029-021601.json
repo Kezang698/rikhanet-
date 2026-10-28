@@ -1,0 +1,172 @@
+{
+  "synthetic_sightings": [
+    {
+      "detection_id": "1a78e165-60d7-528d-91f8-b9361fa35a48",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-25 13:39:57.466056+00:00",
+      "latitude": 26.91055352,
+      "longitude": 90.47741363,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.965,
+      "sight_elev": 646.7,
+      "cur_temp": 26.7,
+      "cur_hum": 75.2,
+      "cur_precip": 0.2,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    },
+    {
+      "detection_id": "417cc900-dd84-5f39-9523-9f9a785c58e4",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-26 11:39:57.466056+00:00",
+      "latitude": 26.95278738,
+      "longitude": 90.47438167,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.82,
+      "sight_elev": 602.1,
+      "cur_temp": 24.0,
+      "cur_hum": 80.3,
+      "cur_precip": 0.2,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    },
+    {
+      "detection_id": "6e68fcb7-ee63-5852-9ea9-114e76ba2782",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-22 03:57:06.037485+00:00",
+      "latitude": 26.92081623,
+      "longitude": 90.47860422,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.87,
+      "sight_elev": 635.7,
+      "cur_temp": 21.3,
+      "cur_hum": 89.7,
+      "cur_precip": 0.6,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    },
+    {
+      "detection_id": "812d27a8-d08a-59fd-b0e2-3921806cafd6",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-28 18:57:07.419636+00:00",
+      "latitude": 26.86264769,
+      "longitude": 90.50144818,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.839,
+      "sight_elev": 622.9,
+      "cur_temp": 20.8,
+      "cur_hum": 92.5,
+      "cur_precip": 0.0,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    },
+    {
+      "detection_id": "fad80e87-40cd-5ffe-a5b3-5ae0f012f96c",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-24 14:05:40.323199+00:00",
+      "latitude": 26.93158523,
+      "longitude": 90.48192422,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.782,
+      "sight_elev": 626.2,
+      "cur_temp": 27.6,
+      "cur_hum": 73.9,
+      "cur_precip": 0.0,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    },
+    {
+      "detection_id": "fc95321b-b912-51fe-bd0c-4e9c7b72ae88",
+      "camera_id": "SYNTH-1306",
+      "timestamp": "2026-10-22 22:48:31.751770+00:00",
+      "latitude": 26.93526391,
+      "longitude": 90.50069367,
+      "gewog_code": 1306,
+      "species": "elephant",
+      "confidence": 0.972,
+      "sight_elev": 657.1,
+      "cur_temp": 23.2,
+      "cur_hum": 84.2,
+      "cur_precip": 0.0,
+      "image_path": null,
+      "discarded": false,
+      "created_at": "2026-10-28 18:58:44.408596+00:00"
+    }
+  ],
+  "predictions": [
+    {
+      "prediction_id": 52,
+      "detection_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+      "cur_code": 1312,
+      "nbr_code": 1302,
+      "nbr_name": "Chhuzangang",
+      "p_low": 0.023382785,
+      "p_present": 0.9766173,
+      "risk_label": "HIGH",
+      "predicted_at": "2026-10-28 20:06:19.414531+00:00"
+    },
+    {
+      "prediction_id": 53,
+      "detection_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+      "cur_code": 1312,
+      "nbr_code": 1306,
+      "nbr_name": "Gelephu",
+      "p_low": 0.07399672,
+      "p_present": 0.9260033,
+      "risk_label": "HIGH",
+      "predicted_at": "2026-10-28 20:06:19.414531+00:00"
+    },
+    {
+      "prediction_id": 54,
+      "detection_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+      "cur_code": 1312,
+      "nbr_code": 1308,
+      "nbr_name": "Jigmechhoeling",
+      "p_low": 0.029764157,
+      "p_present": 0.9702359,
+      "risk_label": "HIGH",
+      "predicted_at": "2026-10-28 20:06:19.414531+00:00"
+    },
+    {
+      "prediction_id": 55,
+      "detection_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+      "cur_code": 1312,
+      "nbr_code": 1315,
+      "nbr_name": "Umling",
+      "p_low": 0.02330489,
+      "p_present": 0.9766951,
+      "risk_label": "HIGH",
+      "predicted_at": "2026-10-28 20:06:19.414531+00:00"
+    }
+  ],
+  "alerts": [
+    {
+      "id": "40af70a3-7beb-4ab6-bbd0-38e0c536a21f",
+      "detection_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+      "gewog_code": 1312,
+      "affected_codes": [
+        1302,
+        1306,
+        1308,
+        1315
+      ],
+      "title": "High elephant occurrence risk near Serzhong",
+      "severity": "High",
+      "status": "New",
+      "response": "",
+      "assigned_to": null,
+      "created_at": "2026-10-28 20:06:19.414531+00:00",
+      "updated_at": "2026-10-28 20:06:19.414531+00:00"
+    }
+  ]
+}

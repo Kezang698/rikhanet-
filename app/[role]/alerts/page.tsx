@@ -12,9 +12,14 @@ import {
   WildlifeImage,
 } from "@/components/ui";
 import { SpeciesSelect, ZoneSelect } from "@/components/filters";
+import { DatabaseAlerts } from "@/components/DatabaseWorkflows";
 
 export default function Alerts() {
-  const { role, data, setData, dialog, notify } = useApp();
+  const {backend}=useApp();
+  return backend.mode==="api"?<DatabaseAlerts/>:<DemoAlerts/>;
+}
+function DemoAlerts() {
+  const { role, data, setData, dialog, notify, backend } = useApp();
   const [tab, setTab] = useState<AlertRecord["status"]>("New"),
     [severity, setSeverity] = useState("all"),
     [species, setSpecies] = useState("all"),
@@ -44,6 +49,12 @@ export default function Alerts() {
     notify(event + " — saved locally.");
     if (changes.status) setTab(changes.status);
   }
+  if (backend.mode === "api") return <>
+    <Heading title="Alerts" description="Ranger alerts will be connected after prediction validation." />
+    <Card title="No alert delivery connected">
+      <p>Stored predictions are available on Predictions. Ranger webhook delivery and acknowledgement storage are pending integration.</p>
+    </Card>
+  </>;
   return (
     <>
       <Heading

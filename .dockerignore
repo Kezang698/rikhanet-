@@ -1,0 +1,17 @@
+.git
+.next
+node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+.env*
+elephant_gps_in_gewogs.*
+*_test_predictions.csv
+*.ckpt
+*.pt
+*.zip
+*.xlsx
+docs
+uploads
+backend/.secret-key

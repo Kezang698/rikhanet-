@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Camera, ImagePlus, LoaderCircle, Play, ScanLine, Square, Video } from "lucide-react";
+import Link from "next/link";
+import { Camera, ImagePlus, LoaderCircle, Play, ScanLine, Square, Video, Map } from "lucide-react";
 import { useApp, useAssignedZones } from "@/components/context";
 import { Card } from "@/components/ui";
 import { ZONE_IDS, ZONES, type Sighting, type Zone } from "@/lib/data";
+import { attachSightingImage } from "@/lib/api";
+import { cameraLocation } from "@/lib/maps";
+const inferenceHeaders=()=>({"X-CSRF-Token":document.cookie.split("; ").find(value=>value.startsWith("rikhanet_csrf="))?.split("=")[1]??""});
 
 interface Prediction {
   x: number;
@@ -26,8 +30,17 @@ interface InferenceResult {
   error?: string;
 }
 
+interface SavedTrigger {
+  id: string;
+  camera: string;
+  gewog: string;
+  timestamp: string;
+  status: "processing" | "complete" | "pending" | "error";
+  message: string;
+}
+
 export function ElephantInference() {
-  const { data, setData, notify } = useApp();
+  const { role, data, setData, notify, backend, saveObservation, enrichSighting, refreshBackend } = useApp();
   const allowedZones = useAssignedZones();
   const cameras = data.cameras.filter((camera) => allowedZones.includes(camera.zone));
   const [cameraId, setCameraId] = useState(cameras[0]?.id ?? "Webcam");
@@ -47,10 +60,53 @@ export function ElephantInference() {
   const imageUrlRef = useRef("");
   const hadElephantRef = useRef(false);
   const savedTrackIdsRef = useRef(new Set<number>());
+  const [savedTriggers, setSavedTriggers] = useState<SavedTrigger[]>([]);
+  const [savingTriggers, setSavingTriggers] = useState(0);
 
-  const saveDetectedElephants = useCallback((found: Prediction[]) => {
+  const saveDetectedElephants = useCallback((found: Prediction[], evidence?: Blob) => {
     const elephants = found.filter((prediction) => /elephant/i.test(prediction.class));
     if (!elephants.length) return;
+    if (backend.mode === "api") {
+      const camera = data.cameras.find((record) => record.id === cameraId);
+      const point = camera?.locationSource === "recorded" ? cameraLocation(camera).coordinates : null;
+      const coordinates = { ...(point ? { latitude: point[0], longitude: point[1] } : {}), expected_gewog_code: Number(camera?.zone ?? zone) };
+      setSavingTriggers((count) => count + 1);
+      void saveObservation({ camera_id: cameraId, species: "elephant",
+        confidence: Math.max(...elephants.map((prediction) => prediction.confidence)), ...coordinates })
+        .then(async (row) => {
+          if (camera && !point) setData(current => {
+            const stored = current.cameras.find(record => record.id === row.camera_id);
+            if (!stored || stored.locationSource === "recorded" || Number(stored.lat) === row.latitude && Number(stored.lng) === row.longitude) return current;
+            return {...current, cameras: current.cameras.map(record => record.id === row.camera_id
+              ? {...record, lat: String(row.latitude), lng: String(row.longitude), locationSource: "demo" as const} : record)};
+          });
+          setSavedTriggers((current) => [{ id: row.detection_id, camera: row.camera_id,
+            gewog: row.gewog_name, timestamp: row.timestamp, status: "processing" as const, message: "Saving image and preparing prediction…" }, ...current].slice(0, 8));
+          let imageError = "";
+          if (evidence) {
+            try { await attachSightingImage(row.detection_id, evidence); }
+            catch (cause) {
+              imageError = cause instanceof Error ? cause.message : "Upload failed";
+            }
+          }
+          notify(imageError ? `Sighting saved, but its image was not saved: ${imageError}` : evidence ? "Camera trigger and image saved." : "Camera trigger saved to PostgreSQL.");
+          try {
+            const result = await enrichSighting(row.detection_id);
+            const complete = result.prediction_status === "complete";
+            setSavedTriggers((current) => current.map((saved) => saved.id === row.detection_id
+              ? { ...saved, status: complete ? "complete" : "pending", message: result.prediction_error || (complete ? "Neighbour predictions saved." : "Prediction is pending.") } : saved));
+          }
+          catch (cause) {
+            const message = cause instanceof Error ? cause.message : "Weather enrichment can be retried.";
+            setSavedTriggers((current) => current.map((saved) => saved.id === row.detection_id ? { ...saved, status: "error", message } : saved));
+            notify(`Sighting saved. ${message}`);
+          }
+          finally { await refreshBackend(); }
+        })
+        .catch((cause) => notify(`Detection was not saved: ${cause instanceof Error ? cause.message : "Backend unavailable"}`))
+        .finally(() => setSavingTriggers((count) => Math.max(0, count - 1)));
+      return;
+    }
     const now = new Date();
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -64,11 +120,11 @@ export function ElephantInference() {
       confidence: Math.max(0, Math.min(1, prediction.confidence)),
       review: "Needs review",
       source: "Local YOLO inference",
-      note: `Detected as ${prediction.class} by the local best.pt model. Review before operational use.`,
+      note: `Detected as ${prediction.class} by the local final.pt model. Review before operational use.`,
     }));
     setData((current) => ({ ...current, sightings: [...records, ...current.sightings] }));
     notify(`${elephants.length} elephant detection${elephants.length === 1 ? "" : "s"} saved to Sightings for review.`);
-  }, [cameraId, notify, setData, zone]);
+  }, [backend.mode, cameraId, data.cameras, enrichSighting, notify, refreshBackend, saveObservation, setData, zone, role]);
 
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -121,7 +177,7 @@ export function ElephantInference() {
           const form = new FormData();
           form.append("image", blob, "live-webcam-frame.jpg");
           setLiveStatus("Looking for elephants…");
-          void fetch("/api/inference", { method: "POST", body: form, signal: controller.signal })
+          void fetch("/api/inference", { method: "POST", body: form, signal: controller.signal, headers:inferenceHeaders() })
             .then(async (response) => {
               const result = await response.json() as InferenceResult;
               if (!response.ok) throw new Error(result.error || "Live inference failed.");
@@ -147,7 +203,7 @@ export function ElephantInference() {
               });
               const untracked = elephants.filter((prediction) => prediction.trackId == null);
               if (newTracks.length || (untracked.length && !hadElephantRef.current)) {
-                saveDetectedElephants([...newTracks, ...(hadElephantRef.current ? [] : untracked)]);
+                saveDetectedElephants([...newTracks, ...(hadElephantRef.current ? [] : untracked)], blob);
               }
               hadElephantRef.current = untracked.length > 0;
             })
@@ -263,14 +319,14 @@ export function ElephantInference() {
     try {
       const form = new FormData();
       form.append("image", image, "webcam-capture.jpg");
-      const response = await fetch("/api/inference", { method: "POST", body: form });
+      const response = await fetch("/api/inference", { method: "POST", body: form, headers:inferenceHeaders() });
       const result = await response.json() as InferenceResult;
       if (!response.ok) throw new Error(result.error || "Inference failed.");
       const found = Array.isArray(result.predictions) ? result.predictions : [];
       setPredictions(found);
       setMetrics({ count: result.count ?? found.length, average: result.averageConfidence ?? null });
       setAnnotatedImageUrl(result.annotatedImageUrl ?? "");
-      saveDetectedElephants(found);
+      saveDetectedElephants(found, image);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Inference failed.");
     } finally {
@@ -284,18 +340,20 @@ export function ElephantInference() {
       <p className="muted">Start the webcam for continuous live detection, or upload an image for a single check. New elephant detections are saved to Sightings for review.</p>
       <div className="inference-controls">
         <label>Camera source
-          <select value={cameraId} onChange={(event) => {
+          <select value={cameraId} disabled={busy || savingTriggers > 0} onChange={(event) => {
             const nextId = event.target.value;
             setCameraId(nextId);
             const found = cameras.find((camera) => camera.id === nextId);
             if (found) setZone(found.zone);
+            hadElephantRef.current = false;
+            savedTrackIdsRef.current.clear();
           }}>
             <option value="Webcam">Webcam</option>
             {cameras.map((camera) => <option key={camera.id} value={camera.id}>{camera.id} · {ZONES[camera.zone]}</option>)}
           </select>
         </label>
         {!currentCamera && <label>Gewog
-          <select value={zone} onChange={(event) => setZone(event.target.value as Zone)}>
+          <select value={zone} disabled={busy || savingTriggers > 0} onChange={(event) => { setZone(event.target.value as Zone); hadElephantRef.current = false; savedTrackIdsRef.current.clear(); }}>
             {allowedZones.map((id) => <option key={id} value={id}>{ZONES[id]}</option>)}
           </select>
         </label>}
@@ -305,6 +363,9 @@ export function ElephantInference() {
         {streaming && <button className="primary" onClick={captureFrame}><ScanLine size={16} />Capture still</button>}
         <button className="primary" disabled={!sourceRef.current || busy} onClick={runInference}>{busy ? <LoaderCircle className="spin" size={16} /> : <Play size={16} />}{busy ? "Analyzing…" : "Run inference"}</button>
       </div>
+      {backend.mode === "api" && <p className="muted small">{currentCamera?.locationSource === "recorded"
+        ? "Sightings use the selected camera’s recorded GPS coordinates."
+        : `No recorded GPS: sightings use a fixed sample location within ${ZONES[currentCamera?.zone ?? zone]}. Predictions use this source gewog’s neighbours.`}</p>}
       <div className="inference-workspace">
         <div className="inference-preview">
           {streaming && !imageUrl && <div className="inference-live-wrap" style={{ aspectRatio: `${imageSize.width} / ${imageSize.height}` }}>
@@ -338,7 +399,18 @@ export function ElephantInference() {
           {error && <p className="form-error" role="alert">{error}</p>}
         </div>
       </div>
-      <small className="muted">Inference runs locally with the project&apos;s best.pt model and Python dependencies.</small>
+      {backend.mode === "api" && (savingTriggers > 0 || savedTriggers.length > 0) && <section className="webcam-saved-events" aria-label="Saved image predictions">
+        <h3>Saved images & predictions</h3>
+        {savingTriggers > 0 && <p role="status"><LoaderCircle size={15} className="spin" /> Saving / processing {savingTriggers} camera trigger{savingTriggers === 1 ? "" : "s"}…</p>}
+        {savedTriggers.map((saved) => <div key={saved.id} className="webcam-saved-event">
+          <div><strong>{saved.gewog} · {saved.camera}</strong>
+            <small>{new Date(saved.timestamp).toLocaleString("en-GB", { timeZone: "Asia/Thimphu" })} · {saved.status === "complete" ? "Prediction complete" : saved.status === "processing" ? "Processing" : "Prediction pending"}</small>
+            <small>{saved.message}</small>
+          </div>
+          <Link className="primary prediction-link" href={`/${role}/predictions?detection=${saved.id}`}><Map size={16} />{saved.status === "complete" ? "View prediction on map" : "View prediction status"}</Link>
+        </div>)}
+      </section>}
+      <small className="muted">Inference runs locally with the project&apos;s final.pt model and Python dependencies.</small>
     </Card>
   );
 }

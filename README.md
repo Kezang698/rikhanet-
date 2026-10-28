@@ -1,4 +1,54 @@
-# RiKhaNET frontend prototype
+# RiKhaNET application prototype
+
+## Persistent accounts and ranger workflows — 29 October 2026
+
+Database mode now has secure sign-in, ranger accounts and assignments, password
+changes/reset tokens, authenticator 2FA, review notes/decisions, field reports and
+automatic high-risk alerts with recorded responses. Open `/login` to create the
+first administrator; the old demo passwords apply only in demo mode. Settings
+shows the email/webhook delivery queue. External delivery awaits the SMTP and
+webhook settings you chose to configure later. See [account setup and workflows](docs/ACCOUNTS.md).
+
+## TFT and image prediction maps — 29 October 2026
+
+The binary TFT checkpoint now runs on CPU using its saved fitted encoders and
+scalers. Webcam saves a source image and provides a button to its own prediction
+map. Neighbour gewogs show blue/yellow/red risk colours; the source has a green
+outline and camera marker. Wildlife Map also has a **Prediction colours** toggle.
+Actual inference needs 4–24 prior elephant events per pair with weather/elevation.
+Insufficient history shows a pending reason and grey areas.
+
+The supplied CSV is a three-class export, so binary reference parity remains
+pending and results are labelled **prototype**. See [the backend guide](docs/BACKEND.md)
+for CPU dependencies, endpoints and validation limits.
+
+## Evidence and CSV intake — 28 October 2026
+
+Database mode now saves the original image for accepted webcam/image detections
+and displays it with stored sightings. **Data Review** supports CSV validation,
+preview and atomic import into PostgreSQL with real GPS and preserved Bhutan-time
+timestamps. Re-uploading an identical file skips existing rows. Use **Load older
+sightings** in the connection banner to load beyond the initial 1,000 records.
+The handover's three-table schema is unchanged. See [the backend guide](docs/BACKEND.md)
+for endpoints, limits, image backup requirements, and remaining workflows.
+
+## PostgreSQL and API connection — 28 October 2026
+
+The application now defaults to PostgreSQL-backed sightings and prediction
+reads through a FastAPI service. Start with [the backend setup guide](docs/BACKEND.md)
+for local Windows commands, Docker services, API routes, verification, and current
+limits. `START-BACKEND.cmd` starts the database and API after dependency setup;
+run the frontend in a separate terminal. Database mode uses the account setup above.
+
+The core schema has the handover's three tables, seeds the supplied 17 gewogs,
+and supports ingestion, external detection results, weather enrichment, sightings,
+and grouped prediction reads. Webcam results can be persisted as one trigger per
+accepted frame. TFT inference is integrated as a prototype; matching binary
+reference validation remains pending. Staff/accounts and ranger workflows now
+persist in PostgreSQL; camera setup remains browser-local. Keep this prototype local.
+
+Earlier sections below document the original frontend demonstration. To use that
+mode, set `NEXT_PUBLIC_DATA_MODE=demo` in `.env.local` and restart Next.js.
 
 This project recreates the 21 screens in the supplied WEBAPP.docx as a runnable Next.js frontend: one shared login, twelve admin views and eight ranger views. The screens use the document's green visual style, original wildlife artwork, real Gelephu map tiles and browser demonstration data.
 
@@ -171,10 +221,11 @@ For local Webcam inference, install Python and the packages listed in `inference
 ```powershell
 python -m venv inference/.venv
 inference\.venv\Scripts\python.exe -m pip install --upgrade pip
+inference\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 inference\.venv\Scripts\python.exe -m pip install -r inference/requirements.txt
 ```
 
-The inference endpoint loads `best.pt` from the project root and runs it with Ultralytics YOLO on the same machine as the Next.js server. If Python is not on PATH or you want a different interpreter, set `RIKHANET_PYTHON` to its executable path before starting Next.js. No inference API key or external inference service is used.
+The inference endpoint automatically uses `inference/.venv` when present and loads `final.pt` from the project root. The supplied `final.pt.zip` is already a PyTorch checkpoint and was copied to `final.pt` without extracting its internal tensor archive. Ultralytics is pinned to 8.4.191. The commands above install CPU PyTorch using the [official PyTorch package index](https://download.pytorch.org/whl/cpu/). To use a different interpreter, set `RIKHANET_PYTHON` to its executable path before starting Next.js. No inference API key or external inference service is used.
 
 Press Ctrl+C in the terminal to stop the app. Dependencies need to be installed only the first time, or after a dependency change.
 
@@ -210,7 +261,7 @@ The sidebar changes by role. Ranger records are limited to GE-1 and GE-2. Each p
 - Filter and generate report charts from demo records. Export CSV, or use Export PDF and choose Save as PDF in the browser print dialog.
 - Import observation CSV files with validation. A sample file is in `public/sample-sightings.csv` and can also be downloaded in Data Review.
 - Preview your own image uploads. They remain marked Awaiting AI backend; the frontend does not invent detections for them.
-- Open the Webcam page to continuously track elephants from the browser webcam with the local `best.pt` YOLO model, or upload an image for a single check. Live boxes update as frames are processed; a detection is saved to Sightings for review when an elephant first appears.
+- Open the Webcam page to continuously track elephants from the browser webcam with the local `final.pt` YOLO model, or upload an image for a single check. Live boxes update as frames are processed; a detection is saved to Sightings for review when an elephant first appears.
 - Change notification preferences and view sample system information.
 - Edit each role's name, contact email, phone number and recovery contact in My Account; changes persist locally and update the profile header.
 

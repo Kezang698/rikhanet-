@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: rikhanet
+      POSTGRES_PASSWORD: rikhanet
+      POSTGRES_DB: rikhanet
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rikhanet -d rikhanet"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      PG_DSN: postgresql://rikhanet:rikhanet@db:5432/rikhanet
+      GEWOG_SEED_PATH: /reference/gewogs_info.xlsx
+      MODEL_PATH: /models/rikhanet_tft_binary.ckpt
+      TRAINING_DATASET_PKL: /models/training_dataset.pkl
+      PREDICTION_PARITY_CSV: /data/tft_test_predictions.csv
+      API_HOST: 0.0.0.0
+      RIKHANET_UPLOAD_DIR: /uploads/sightings
+      RIKHANET_SECRET_FILE: /uploads/app-secrets/master.key
+      APP_ORIGIN: ${APP_ORIGIN:-http://127.0.0.1:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_SSL: ${SMTP_SSL:-0}
+      RIKHANET_ALERT_WEBHOOK_URL: ${RIKHANET_ALERT_WEBHOOK_URL:-}
+      RIKHANET_WEBHOOK_SECRET: ${RIKHANET_WEBHOOK_SECRET:-}
+    volumes:
+      - "./gewogs_info (1).xlsx:/reference/gewogs_info.xlsx:ro"
+      - "./models:/models:ro"
+      - "./data:/data:ro"
+      - "./tft_test_predictions.csv:/data/tft_test_predictions.csv:ro"
+      - "./uploads:/uploads"
+      - "./rikhanet_tft_binary.ckpt:/models/rikhanet_tft_binary.ckpt:ro"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  frontend:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      RIKHANET_API_URL: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  pgdata:

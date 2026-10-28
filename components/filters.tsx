@@ -48,6 +48,8 @@ export function SpeciesSelect({
   value: string;
   onChange: (s: string) => void;
 }) {
+  const sightings = useVisibleSightings();
+  const species = Array.from(new Set([...SPECIES, ...sightings.map((row) => row.species)]));
   return (
     <select
       aria-label="Filter by species"
@@ -55,7 +57,7 @@ export function SpeciesSelect({
       onChange={(e) => onChange(e.target.value)}
     >
       <option value="all">All Species</option>
-      {SPECIES.map((s) => (
+      {species.map((s) => (
         <option key={s}>{s}</option>
       ))}
     </select>

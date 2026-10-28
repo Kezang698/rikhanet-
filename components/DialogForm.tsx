@@ -1,17 +1,20 @@
 "use client";
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Modal } from "./ui";
 import type { DialogSpec } from "./context";
 
 export function DialogForm({ spec, close }: { spec: DialogSpec; close: () => void }) {
-  function submit(e: FormEvent<HTMLFormElement>) {
+  const [busy,setBusy] = useState(false), [error,setError] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     const values = Object.fromEntries(form.entries()) as Record<string, string>;
     for (const f of spec.fields ?? [])
       if (f.type === "checkboxes") values[f.name] = form.getAll(f.name).join(",");
-    spec.onSave?.(values);
-    close();
+    setBusy(true);setError("");
+    try { await spec.onSave?.(values); close(); }
+    catch(cause){setError(cause instanceof Error?cause.message:"Could not save changes");}
+    finally{setBusy(false);}
   }
   return (
     <Modal title={spec.title} onClose={close}>
@@ -78,10 +81,11 @@ export function DialogForm({ spec, close }: { spec: DialogSpec; close: () => voi
           ))}
         </div>
         <div className="dialog-actions">
+          {error&&<p className="form-error" role="alert">{error}</p>}
           <button type="button" onClick={close}>
             Cancel
           </button>
-          <button className="primary" type="submit">
+          <button className="primary" type="submit" disabled={busy}>
             {spec.submit ?? "Save changes"}
           </button>
         </div>

@@ -16,6 +16,8 @@ import {
   YAxis,
 } from "recharts";
 import { CalendarDays, Database, Download } from "lucide-react";
+import { bhutanDateParts } from "@/lib/api";
+import { FieldReports } from "@/components/DatabaseWorkflows";
 import { csvDownload, shortDate, SPECIES, TODAY, ZONES } from "@/lib/data";
 import { useApp, useAssignedZones } from "@/components/context";
 import { Animal, Badge, Card, Empty, Heading, Severity } from "@/components/ui";
@@ -36,16 +38,19 @@ const COLOURS = [
 ];
 
 export default function Reports() {
-  const { role, data, notify } = useApp();
+  const { role, data, notify, backend } = useApp();
+  const database = backend.mode === "api";
+  const initialTo = database ? bhutanDateParts(new Date().toISOString()).date : TODAY;
+  const initialFrom = database ? bhutanDateParts(new Date(Date.now() - 6 * 86400_000).toISOString()).date : "2026-09-22";
   const all = useVisibleSightings();
   const zones = useAssignedZones();
-  const [from, setFrom] = useState("2026-09-22"),
-    [to, setTo] = useState(TODAY),
+  const [from, setFrom] = useState(initialFrom),
+    [to, setTo] = useState(initialTo),
     [species, setSpecies] = useState("all"),
     [zone, setZone] = useState("all"),
     [applied, setApplied] = useState({
-      from: "2026-09-22",
-      to: TODAY,
+      from: initialFrom,
+      to: initialTo,
       species: "all",
       zone: "all",
     });
@@ -56,7 +61,7 @@ export default function Reports() {
       (applied.species === "all" || s.species === applied.species) &&
       (applied.zone === "all" || s.zone === applied.zone),
   );
-  const animals = SPECIES.filter(
+  const animals = Array.from(new Set([...SPECIES, ...all.map((row) => row.species)])).filter(
     (s) => applied.species === "all" || applied.species === s,
   );
   const trend = Array.from({ length: 12 }, (_, i) => {
@@ -92,7 +97,7 @@ export default function Reports() {
   function exportReport() {
     csvDownload("rikhanet-report.csv", [
       ["Report period", `${applied.from} to ${applied.to}`],
-      ["Data source", "Browser demonstration records"],
+      ["Data source", database ? `PostgreSQL records (${data.sightings.length} sightings loaded)` : "Browser demonstration records"],
       ["Species", ...zones.map((z) => ZONES[z]), "Total"],
       ...animals.map((sp) => [
         sp,
@@ -114,6 +119,7 @@ export default function Reports() {
             : "View activity summaries for your assigned gewogs and your alert response history"
         }
       />
+      {database && <FieldReports/>}
       <div className="filter-bar report-filters">
         <label>
           Date range

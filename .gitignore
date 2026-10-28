@@ -5,3 +5,10 @@ out/
 .env*
 !.env.example
 inference/.venv/
+backend/.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+models/*.pkl
+uploads/
+backend/.secret-key

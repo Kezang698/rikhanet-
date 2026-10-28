@@ -1,0 +1,7 @@
+-r requirements.txt
+# Install a CPU PyTorch build first, following the backend guide.
+torch>=2.8,<3
+pytorch-forecasting>=1.4,<2
+lightning==2.6.6
+# Version recorded by the fitted encoders in rikhanet_tft_binary.ckpt.
+scikit-learn==1.6.1

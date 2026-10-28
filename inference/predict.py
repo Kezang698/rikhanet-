@@ -19,10 +19,10 @@ def load_model():
             model = YOLO(str(model_path))
         return model
     except Exception as error:
-        raise RuntimeError("The local model best.pt could not be loaded.") from error
+        raise RuntimeError("The local model final.pt could not be loaded.") from error
 
 
-model_path = Path(__file__).resolve().parents[1] / "best.pt"
+model_path = Path(__file__).resolve().parents[1] / "final.pt"
 
 
 def predict_bytes(model, image_bytes: bytes) -> dict:

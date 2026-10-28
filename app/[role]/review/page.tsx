@@ -14,6 +14,8 @@ import {
 import { useApp } from "@/components/context";
 import { Badge, Card, Heading, Status, WildlifeImage } from "@/components/ui";
 import { SpeciesSelect } from "@/components/filters";
+import { DatabaseIntake } from "@/components/DatabaseIntake";
+import { ReviewQueue } from "@/components/DatabaseWorkflows";
 
 function parseCSV(text: string) {
   const rows: string[][] = [];
@@ -45,7 +47,7 @@ function parseCSV(text: string) {
 }
 
 export default function DataReview() {
-  const { data, setData, notify } = useApp();
+  const { data, setData, notify, backend, go } = useApp();
   const [tab, setTab] = useState("images"),
     [species, setSpecies] = useState("all"),
     [selected, setSelected] = useState("S-001"),
@@ -171,6 +173,11 @@ export default function DataReview() {
     notify("Images previewed. AI processing requires the future backend.");
     if (imageRef.current) imageRef.current.value = "";
   }
+  if (backend.mode === "api") return <>
+    <Heading title="Data Review" description="Sightings are read from PostgreSQL." />
+    <DatabaseIntake />
+    <ReviewQueue />
+  </>;
   return (
     <>
       <Heading

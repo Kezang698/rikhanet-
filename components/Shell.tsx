@@ -8,6 +8,7 @@ import { Logo, NAV } from "./ui";
 import { AppContext } from "./context";
 import { Loading } from "./Loading";
 import { useSession } from "./AppProvider";
+import { BackendStatus } from "./BackendStatus";
 
 /** Sidebar + topbar for every /admin/* and /ranger/* route. */
 export default function Shell({
@@ -51,6 +52,8 @@ export default function Shell({
     <AppContext.Provider
       value={{
         role: routeRole,
+        user: session.user,
+        refreshAccount: session.refreshAccount,
         data,
         setData: session.setData,
         go,
@@ -59,6 +62,11 @@ export default function Shell({
         signOut,
         selectedId: session.selectedId,
         setSelectedId: session.setSelectedId,
+        backend: session.backend,
+        refreshBackend: session.refreshBackend,
+        saveObservation: session.saveObservation,
+        enrichSighting: session.enrichSighting,
+        loadOlderSightings: session.loadOlderSightings,
       }}
     >
       {title}
@@ -100,9 +108,9 @@ export default function Shell({
             )}
           </nav>
           <div className="sidebar-footer">
-            Illustrative proposal data
+            {session.backend.mode === "api" ? "PostgreSQL observation data" : "Illustrative proposal data"}
             <br />
-            <span>Local frontend demonstration</span>
+            <span>{session.backend.mode === "api" ? "Local prototype · Demo sign-in" : "Local frontend demonstration"}</span>
           </div>
         </aside>
         {sidebar && (
@@ -125,7 +133,7 @@ export default function Shell({
             </button>
             <b>{routeRole.toUpperCase()}</b>
             <span className="top-divider" />
-            <span className="proposal-label">Illustrative proposal data</span>
+            <span className="proposal-label">{session.backend.mode === "api" ? "Database prototype" : "Illustrative proposal data"}</span>
             <div className="topbar-right">
               <button
                 className="icon-button notification-button"
@@ -133,7 +141,7 @@ export default function Shell({
                 onClick={() => go("alerts")}
               >
                 <Bell size={21} />
-                <i />
+                {(session.backend.mode==="demo"||session.notificationCount>0)&&<i />}
               </button>
               <button
                 className="account-menu"
@@ -161,6 +169,7 @@ export default function Shell({
             </div>
           </header>
           <main className="main-content" id="main-content">
+            <BackendStatus />
             {children}
           </main>
         </div>

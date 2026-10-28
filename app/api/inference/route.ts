@@ -11,7 +11,7 @@ const STARTUP_TIMEOUT_MS = 120_000;
 const INFERENCE_TIMEOUT_MS = 30_000;
 const MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 const WORKER_PROTOCOL_MARKER = "@@RIKHANET@@";
-const WORKER_PROTOCOL_VERSION = 2;
+const WORKER_PROTOCOL_VERSION = 3;
 
 interface Prediction {
   x: number;
@@ -86,7 +86,7 @@ function getLocalModelWorker(): LocalModelWorker {
 
   const root = process.cwd();
   const script = path.join(root, "inference", "worker.py");
-  const child = spawn(pythonExecutable(), [script], {
+  const child = spawn(/* turbopackIgnore: true */ pythonExecutable(), [script], {
     cwd: root,
     windowsHide: true,
     stdio: ["pipe", "pipe", "pipe"],
@@ -204,6 +204,21 @@ async function runLocalModel(image: Buffer): Promise<WorkerReply> {
 }
 
 export async function POST(request: Request) {
+  let confidenceThreshold = 0;
+  if(process.env.NEXT_PUBLIC_DATA_MODE!=="demo") {
+    const origin=request.headers.get("origin");
+    if(origin && origin!==new URL(request.url).origin) return NextResponse.json({error:"Request origin is not allowed"},{status:403});
+    const csrf=request.headers.get("cookie")?.split("; ").find(value=>value.startsWith("rikhanet_csrf="))?.split("=")[1];
+    if(!csrf||request.headers.get("x-csrf-token")!==csrf) return NextResponse.json({error:"Reload the page and sign in before running inference"},{status:403});
+    try {
+      const base=process.env.RIKHANET_API_URL||"http://127.0.0.1:8000";
+      const auth=await fetch(`${base.replace(/\/$/,"")}/config`,{headers:{Cookie:request.headers.get("cookie")||""},cache:"no-store",signal:AbortSignal.timeout(10_000)});
+      if(!auth.ok) return NextResponse.json({error:"Sign in before running inference"},{status:auth.status});
+      const settings=await auth.json();
+      confidenceThreshold=Number(settings.config.threshold);
+      if(!Number.isFinite(confidenceThreshold)||confidenceThreshold<0||confidenceThreshold>1) throw new Error("Invalid detection settings");
+    } catch {return NextResponse.json({error:"Authentication service unavailable"},{status:503});}
+  }
   let form: FormData;
   try {
     form = await request.formData();
@@ -224,7 +239,7 @@ export async function POST(request: Request) {
 
   try {
     const result = await runLocalModel(Buffer.from(await image.arrayBuffer()));
-    const predictions = result.predictions ?? [];
+    const predictions = (result.predictions ?? []).filter(prediction=>prediction.confidence>=confidenceThreshold);
     const averageConfidence = predictions.length
       ? predictions.reduce((sum, prediction) => sum + prediction.confidence, 0) / predictions.length
       : null;
@@ -233,13 +248,13 @@ export async function POST(request: Request) {
       count: predictions.length,
       averageConfidence,
       image: result.image,
-      model: "best.pt",
+      model: "final.pt",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Local model inference failed.";
     const missingPython = error instanceof Error && "code" in error && error.code === "ENOENT";
     const missingDependencies = message.includes("dependencies are missing");
-    const missingModel = message.includes("best.pt");
+    const missingModel = message.includes("final.pt");
     console.error("Local YOLO inference failed", message);
     return NextResponse.json(
       {

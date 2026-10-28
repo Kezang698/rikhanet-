@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { ExternalLink, X } from "lucide-react";
 import { shortDate, TODAY, ZONES } from "@/lib/data";
 import { useApp } from "@/components/context";
 import { formatCoordinates, locationLabel, sightingLocation } from "@/lib/maps";
+import { bhutanDateParts } from "@/lib/api";
 import {
   Animal,
   Badge,
@@ -19,12 +21,14 @@ import {
 } from "@/components/filters";
 
 export default function WildlifeMap() {
-  const { role, data, selectedId, setSelectedId, go } = useApp();
+  const { role, data, backend, selectedId, setSelectedId, go } = useApp();
+  const today = backend.mode === "api" ? bhutanDateParts(new Date().toISOString()).date : TODAY;
   const sightings = useVisibleSightings();
   const [species, setSpecies] = useState("all"),
     [zone, setZone] = useState("all"),
     [camera, setCamera] = useState("all"),
-    [date, setDate] = useState(TODAY),
+    [date, setDate] = useState(today),
+    [riskOverlay, setRiskOverlay] = useState(backend.mode === "api"),
     [closed, setClosed] = useState(false);
   const filtered = sightings.filter(
     (s) =>
@@ -70,16 +74,18 @@ export default function WildlifeMap() {
             setSpecies("all");
             setZone("all");
             setCamera("all");
-            setDate(TODAY);
+            setDate(today);
             setClosed(false);
           }}
         >
           Clear filters
         </button>
+        <label><input type="checkbox" checked={riskOverlay} onChange={event => setRiskOverlay(event.target.checked)} /> Prediction colours</label>
       </div>
       <div className="map-detail-grid">
         <MapPanel
           mode="wildlife"
+          riskOverlay={riskOverlay}
           activeZone={zone}
           sightings={filtered}
           cameras={data.cameras.filter(c => (zone === "all" || c.zone === zone) && (camera === "all" || c.id === camera))}
@@ -144,6 +150,7 @@ export default function WildlifeMap() {
                 </>
               )}
             </dl>
+            {backend.mode === "api" && <Link className="prediction-link full-width" href={`/${role}/predictions?detection=${selected.id}`}>View this image’s prediction</Link>}
             <button
               className="full-width"
               onClick={() => {

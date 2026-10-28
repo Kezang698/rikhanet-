@@ -5,6 +5,7 @@ import { profileInitials, type AccountProfile } from "@/lib/data";
 import { ZONES } from "@/lib/data";
 import { useApp, useAssignedZones } from "@/components/context";
 import { Badge, Card, Heading, Modal, Toggle } from "@/components/ui";
+import { DatabaseAccount } from "@/components/DatabaseWorkflows";
 
 function ProfileEditor({
   profile,
@@ -87,6 +88,10 @@ function ProfileEditor({
 }
 
 export default function Account() {
+  const {backend}=useApp();
+  return backend.mode==="api"?<DatabaseAccount/>:<DemoAccount/>;
+}
+function DemoAccount() {
   const { role, data, setData, dialog, notify, signOut } = useApp();
   const ranger = role === "ranger";
   const assigned = useAssignedZones();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Layers, LocateFixed, MapPin, Maximize, Minus, Plus, RefreshCw, X } from "lucide-react";
+import { Layers, LocateFixed, MapPin, Maximize, Minus, Plus, RefreshCw, X, TriangleAlert, Diamond, CircleCheck, CircleHelp } from "lucide-react";
 import type * as Leaflet from "leaflet";
 import { TODAY, zoneName, type CameraRecord, type Sighting, type Zone } from "@/lib/data";
 import { GEWOGS } from "@/lib/gewogs";
@@ -11,6 +11,7 @@ import {
   MAP_TILE_URL, sightingLocation, type Coordinates,
 } from "@/lib/maps";
 import { useApp, useAssignedZones } from "./context";
+import { bhutanDateParts, latestForecasts, forecastColor, type Forecast } from "@/lib/api";
 
 // Names of small gewogs appear from this zoom level; large ones are always labelled.
 const LABEL_ALL_ZOOM = 10;
@@ -27,6 +28,10 @@ interface MapPanelProps {
   selectedCameraId?: string;
   onSightingSelect?: (id: string) => void;
   onCameraSelect?: (id: string) => void;
+  forecasts?: Record<string, Forecast>;
+  triggerZone?: string;
+  triggerSighting?: Sighting;
+  riskOverlay?: boolean;
 }
 
 function popupText(parent: HTMLElement, tag: "strong" | "p" | "small", text: string) {
@@ -42,8 +47,14 @@ const SIGHTING_ICON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="cur
 export function MapPanel({
   mode = "activity", activeZone, filterLabel, sightings, cameras,
   selectedSightingId, selectedCameraId, onSelect, onSightingSelect, onCameraSelect,
+  forecasts: scopedForecasts, triggerZone, triggerSighting, riskOverlay,
 }: MapPanelProps) {
-  const { data } = useApp();
+  const { data, backend } = useApp();
+  const [showRisk, setShowRisk] = useState(true);
+  const riskAvailable = mode === "prediction" || (riskOverlay ?? backend.mode === "api");
+  const riskMode = riskAvailable && showRisk;
+  const forecasts = scopedForecasts ?? latestForecasts(backend.predictions);
+  const today = backend.mode === "api" ? bhutanDateParts(new Date().toISOString()).date : TODAY;
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<Leaflet.Map | null>(null);
   const tiles = useRef<Leaflet.TileLayer | null>(null);
@@ -62,15 +73,16 @@ export function MapPanel({
   const [error, setError] = useState("");
   const [zoom, setZoom] = useState(GELEPHU_ZOOM);
   const allowedZones = useAssignedZones();
+  const forecastCount = allowedZones.filter(code => forecasts[code]).length;
   const visibleSightings = useMemo(() =>
-    (sightings ?? data.sightings.filter(s => s.date === TODAY))
+    (sightings ?? data.sightings.filter(s => s.date === today))
       .filter(s => allowedZones.includes(s.zone)),
-  [sightings, data.sightings, allowedZones]);
+  [sightings, data.sightings, allowedZones, today]);
   const visibleCameras = useMemo(() =>
     (cameras ?? data.cameras).filter(c => allowedZones.includes(c.zone)),
   [cameras, data.cameras, allowedZones]);
   // Selection changes do not recreate markers or close an open popup.
-  const layerKey = JSON.stringify({ visibleSightings, visibleCameras, allCameras: data.cameras, allowedZones, mode, showSightings, showCameras, showZones });
+  const layerKey = JSON.stringify({ visibleSightings, visibleCameras, allCameras: data.cameras, allowedZones, mode, riskMode, showSightings, showCameras, showZones, forecasts, triggerZone, triggerSighting, dataMode: backend.mode });
 
   useEffect(() => {
     let disposed = false;
@@ -149,10 +161,13 @@ export function MapPanel({
       for (const gewog of GEWOGS) {
         if (!allowedZones.includes(gewog.id)) continue;
         const zone = gewog.id;
-        const risk = DEMO_ZONE_RISK[zone];
-        const color = mode === "prediction" ? risk >= 70 ? "#dc2626" : risk >= 40 ? "#eab308" : "#2563eb" : "#0b6b50";
+        const forecast = forecasts[zone];
+        const risk = backend.mode === "api" ? forecast ? Math.round(forecast.p_present * 1000) / 10 : null : DEMO_ZONE_RISK[zone];
+        const riskColor = backend.mode === "api" ? forecastColor(forecast?.risk_label)
+          : (risk ?? 0) >= 70 ? "#dc2626" : (risk ?? 0) >= 40 ? "#eab308" : "#2563eb";
+        const color = riskMode ? riskColor : "#0b6b50";
         const polygon = L.polygon(gewog.ring, {
-          color, weight: 2, fillColor: color, fillOpacity: 0.12,
+          color: zone === triggerZone ? "#095942" : color, weight: zone === triggerZone ? 4 : 2, fillColor: color, fillOpacity: riskMode && forecast ? 0.42 : 0.12,
           dashArray: gewog.partial ? "6 6" : undefined, bubblingMouseEvents: false,
         }).addTo(group);
         sectors.current.push({ polygon, zone });
@@ -162,23 +177,40 @@ export function MapPanel({
           popupText(popup, "strong", `${gewog.name} gewog`);
           popupText(popup, "p", `Code ${gewog.id} · ${gewog.areaKm2.toLocaleString("en-US")} km² inside GMC`);
           if (gewog.partial) popupText(popup, "small", `Partial gewog: only ${gewog.pctInGmc}% lies inside the GMC.`);
-          if (mode === "prediction") popupText(popup, "p", `${risk}% modelled risk (demonstration)`);
+          if (zone === triggerZone) popupText(popup, "small", "Current sighting gewog (trigger)");
+          if (riskMode) popupText(popup, "p", risk === null ? "No current stored forecast" : `${risk}% occurrence probability${backend.mode === "demo" ? " (demonstration)" : ` · ${forecast.risk_label}`}`);
           if (actions.current.onSelect) popupAction(popup, "View gewog", () => actions.current.onSelect?.(zone));
           return popup;
         };
-        polygon.on("mouseover", () => polygon.setStyle({ fillOpacity: 0.25 }));
-        polygon.on("mouseout", () => polygon.setStyle({ fillOpacity: activeZoneRef.current === zone ? 0.25 : 0.12 }));
+        polygon.on("mouseover", () => polygon.setStyle({ fillOpacity: riskMode && forecast ? 0.6 : 0.25 }));
+        polygon.on("mouseout", () => polygon.setStyle({ fillOpacity: activeZoneRef.current === zone ? 0.55 : riskMode && forecast ? 0.42 : 0.12 }));
         polygon.bindPopup(buildPopup, { maxWidth: 260 });
-        const large = gewog.areaKm2 >= LARGE_GEWOG_KM2;
-        const label = L.marker(gewog.label, {
-          icon: L.divIcon({
-            className: `map-gewog-label${large ? " large" : ""}`,
-            html: `<span>${mode === "prediction" ? `${gewog.name} · ${risk}%` : gewog.name}</span>`, iconSize: [0, 0],
-          }),
-          title: `Inspect ${gewog.name} gewog`, keyboard: true, zIndexOffset: 100,
-        }).addTo(group);
-        label.bindPopup(buildPopup, { maxWidth: 260 });
+        if (!riskMode) {
+          const large = gewog.areaKm2 >= LARGE_GEWOG_KM2;
+          const label = L.marker(gewog.label, {
+            icon: L.divIcon({
+              className: `map-gewog-label${large ? " large" : ""}`,
+              html: `<span>${gewog.name}</span>`, iconSize: [0, 0],
+            }),
+            title: `Inspect ${gewog.name} gewog`, keyboard: true, zIndexOffset: 100,
+          }).addTo(group);
+          label.bindPopup(buildPopup, { maxWidth: 260 });
+        }
       }
+    }
+    if (triggerSighting && allowedZones.includes(triggerSighting.zone)) {
+      const location = sightingLocation(triggerSighting, data.cameras);
+      const marker = L.marker(location.coordinates, {
+        icon: L.divIcon({ className: "map-record-marker camera-marker source-image-marker", html: CAMERA_ICON, iconSize: [30, 30], iconAnchor: [15, 30] }),
+        title: "Source image location", keyboard: true, zIndexOffset: 700,
+      }).addTo(group);
+      const popup = document.createElement("div");
+      popup.className = "map-record-popup";
+      popupText(popup, "strong", "Source image");
+      popupText(popup, "p", `${triggerSighting.camera} · ${zoneName(triggerSighting.zone)}`);
+      popupText(popup, "small", `${formatCoordinates(location.coordinates)} · ${locationLabel(location.source)}`);
+      marker.bindPopup(popup, { maxWidth: 260 });
+      markers.current.push({ marker, ids: [triggerSighting.id] });
     }
     if (showCameras) {
       for (const camera of visibleCameras) {
@@ -245,9 +277,10 @@ export function MapPanel({
       marker.getElement()?.classList.toggle("selected", ids.includes(selectedSightingId ?? "") || ids.includes(selectedCameraId ?? ""));
     }
     for (const { polygon, zone } of sectors.current) {
-      polygon.setStyle({ weight: activeZone === zone ? 4 : 2, fillOpacity: activeZone === zone ? 0.25 : 0.12 });
+      polygon.setStyle({ weight: activeZone === zone || triggerZone === zone ? 4 : 2,
+        fillOpacity: activeZone === zone ? 0.55 : riskMode && forecasts[zone] ? 0.42 : 0.12 });
     }
-  }, [leaflet, layerKey, selectedSightingId, selectedCameraId, activeZone]);
+  }, [leaflet, layerKey, selectedSightingId, selectedCameraId, activeZone, triggerZone]);
 
   useEffect(() => {
     const selected = markers.current.find(({ ids }) =>
@@ -275,7 +308,7 @@ export function MapPanel({
     <section className={`map-panel real-map map-${mode}`} aria-label="Interactive map of the Gelephu Mindfulness City gewogs">
       <div className="map-location-bar">
         <span><MapPin size={16} /> <b>Gelephu Mindfulness City — gewogs</b></span>
-        <small>Real boundaries · Demo records</small>
+        <small>{backend.mode === "api" ? "Real boundaries · Stored sightings · Local camera setup" : "Real boundaries · Demo records"}</small>
       </div>
       <div className="map-canvas-wrap">
         <div ref={container} className="map-canvas" data-labels={zoom >= LABEL_ALL_ZOOM ? "all" : "large"} aria-label="Gelephu gewog map. Use arrow keys to pan and plus or minus to zoom." />
@@ -292,6 +325,7 @@ export function MapPanel({
             <label><input type="checkbox" checked={showSightings} onChange={event => setShowSightings(event.target.checked)} /> Sightings</label>
             <label><input type="checkbox" checked={showCameras} onChange={event => setShowCameras(event.target.checked)} /> Cameras</label>
             <label><input type="checkbox" checked={showZones} onChange={event => setShowZones(event.target.checked)} /> Gewog boundaries and names</label>
+            {riskAvailable && <label><input type="checkbox" checked={showRisk} onChange={event => setShowRisk(event.target.checked)} /> Prediction risk colours</label>}
             <small>Gewog boundaries are the supplied GMC data (simplified for display). Sample positions are not live detections.</small>
           </div>
         )}
@@ -304,11 +338,24 @@ export function MapPanel({
       </div>
       <div className="real-map-footer">
         <div className="real-map-legend">
+          {riskMode && <>
+            <span><TriangleAlert size={16} color={forecastColor("HIGH")} /> High ≥60%</span>
+            <span><Diamond size={16} color={forecastColor("MEDIUM")} /> Medium 25–&lt;60%</span>
+            <span><CircleCheck size={16} color={forecastColor("LOW")} /> Low &lt;25%</span>
+            <span><CircleHelp size={16} color={forecastColor()} /> No forecast</span>
+          </>}
+          {triggerSighting && <span><i className="legend-source" /> Source image</span>}
           {showSightings && <span><i className="legend-sighting" /> Sightings ({visibleSightings.length})</span>}
           {showCameras && <><span><i className="legend-online" /> Camera online</span><span><i className="legend-offline" /> Camera offline</span></>}
           {showZones && <span><i className="legend-sector" /> Gewog</span>}
         </div>
         {filterLabel && <span className="map-results-label">{filterLabel}</span>}
+        {riskMode && backend.mode === "api" && <span className="map-forecast-status" role="status">
+          {forecastCount ? `${forecastCount} gewogs have ${scopedForecasts ? "this image’s saved" : "current 24-hour"} forecasts. Tap a gewog to see its prediction details.`
+            : backend.status === "error" ? "Forecast connection unavailable. Grey indicates no loaded prediction."
+              : triggerSighting ? "Prediction pending for this image. Grey means no saved forecast; see the history requirements beside the map."
+                : "No current predictions yet. Gewogs stay grey until an image has enough history to generate a forecast."}
+        </span>}
         <span className="map-gesture-hint">Drag to pan · Pinch or use +/− to zoom</span>
       </div>
     </section>

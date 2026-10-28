@@ -1,0 +1,60 @@
+{
+  "source_id": "79991156-bfc7-53d5-a3e2-1760015813e0",
+  "profile": "quiet_gelephu_other_wildlife",
+  "changes": [
+    {
+      "id": "812d27a8-d08a-59fd-b0e2-3921806cafd6",
+      "species": "Wild Boar"
+    },
+    {
+      "id": "417cc900-dd84-5f39-9523-9f9a785c58e4",
+      "species": "Wild Boar"
+    },
+    {
+      "id": "1a78e165-60d7-528d-91f8-b9361fa35a48",
+      "species": "Wild Boar"
+    },
+    {
+      "id": "fad80e87-40cd-5ffe-a5b3-5ae0f012f96c",
+      "species": "Wild Boar"
+    },
+    {
+      "id": "fc95321b-b912-51fe-bd0c-4e9c7b72ae88",
+      "species": "Wild Boar"
+    },
+    {
+      "id": "6e68fcb7-ee63-5852-9ea9-114e76ba2782",
+      "species": "Wild Boar"
+    }
+  ],
+  "predictions": [
+    {
+      "nbr_code": 1302,
+      "name": "Chhuzangang",
+      "p_present": 0.9766172766685486,
+      "p_low": 0.02338278479874134,
+      "risk_label": "HIGH"
+    },
+    {
+      "nbr_code": 1306,
+      "name": "Gelephu",
+      "p_present": 0.03798900544643402,
+      "p_low": 0.9620109796524048,
+      "risk_label": "LOW"
+    },
+    {
+      "nbr_code": 1308,
+      "name": "Jigmechhoeling",
+      "p_present": 0.9702358841896057,
+      "p_low": 0.02976415678858757,
+      "risk_label": "HIGH"
+    },
+    {
+      "nbr_code": 1315,
+      "name": "Umling",
+      "p_present": 0.9766951203346252,
+      "p_low": 0.02330489084124565,
+      "risk_label": "HIGH"
+    }
+  ]
+}

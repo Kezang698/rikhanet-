@@ -12,7 +12,8 @@ import { Animal, Card, Heading, MapPanel } from "@/components/ui";
 import { useVisibleSightings } from "@/components/filters";
 
 export default function Overview() {
-  const { role, data, go, setSelectedId } = useApp();
+  const { role, data, go, setSelectedId, backend } = useApp();
+  const database = backend.mode === "api";
   const ranger = role === "ranger";
   const sightings = useVisibleSightings();
   const zones = useAssignedZones();
@@ -56,9 +57,9 @@ export default function Overview() {
           view: "sightings" as const,
         },
         {
-          title: "Cameras Online",
+          title: database ? "Configured Camera Sources" : "Cameras Online",
           value: `${online} / ${total}`,
-          note: "In your gewogs",
+          note: database ? "Local prototype configuration" : "In your gewogs",
           icon: Camera,
           view: "cameras" as const,
         },
@@ -67,7 +68,7 @@ export default function Overview() {
         {
           title: "Recent Sightings",
           value: data.sightings.length,
-          note: "Last 7 days",
+          note: database ? "Stored records loaded" : "Last 7 days",
           icon: null,
           view: "sightings" as const,
         },
@@ -82,9 +83,9 @@ export default function Overview() {
           danger: true,
         },
         {
-          title: "Reporting Cameras",
+          title: database ? "Configured Camera Sources" : "Reporting Cameras",
           value: `${online} / ${total}`,
-          note: "Online",
+          note: database ? "Local prototype configuration" : "Online",
           icon: Camera,
           view: "cameras" as const,
         },
@@ -134,7 +135,7 @@ export default function Overview() {
               </strong>
               <small>{s.note}</small>
               <span className={`stat-trend ${s.danger ? "red" : ""}`}>
-                {i === 0 && !ranger
+                {database ? "" : i === 0 && !ranger
                   ? "↑ 12% vs previous week"
                   : s.view === "cameras"
                     ? `${Math.round((online / total) * 100)}% operational`
@@ -200,7 +201,7 @@ export default function Overview() {
                 <ChevronRight size={16} />
               </button>
             ))}
-            {feedCamera && shown(feedCamera.zone) && (
+            {!database && feedCamera && shown(feedCamera.zone) && (
               <button onClick={() => go("cameras")}>
                 <Camera size={34} />
                 <span>

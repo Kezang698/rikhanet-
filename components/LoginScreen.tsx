@@ -5,6 +5,8 @@ import type { Role } from "@/lib/data";
 import { Artwork } from "./ui";
 import { Loading } from "./Loading";
 import { useSession } from "./AppProvider";
+import { DATABASE_MODE } from "@/lib/api";
+import { SecureLogin } from "./SecureLogin";
 
 function Login({ onLogin }: { onLogin: (role: Role) => void }) {
   const [visible, setVisible] = useState(false),
@@ -108,7 +110,7 @@ function Login({ onLogin }: { onLogin: (role: Role) => void }) {
               </div>
             )}
             <p className="prototype-note">
-              Illustrative proposal data · Frontend demonstration
+              {DATABASE_MODE ? "Local database prototype · Demo sign-in" : "Illustrative proposal data · Frontend demonstration"}
             </p>
           </form>
           <Artwork
@@ -139,7 +141,7 @@ export default function LoginScreen() {
   return (
     <>
       {title}
-      <Login onLogin={login} />
+      {DATABASE_MODE ? <SecureLogin /> : <Login onLogin={login} />}
     </>
   );
 }
