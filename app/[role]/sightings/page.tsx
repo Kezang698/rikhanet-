@@ -38,7 +38,7 @@ export default function Sightings() {
     [status, setStatus] = useState("all"),
     [page, setPage] = useState(1),
     [from, setFrom] = useState("2026-09-22"),
-    [to, setTo] = useState(TODAY),
+    [to, setTo] = useState(""),
     [note, setNote] = useState("");
   const filtered = visible.filter(
     (s) =>
@@ -173,6 +173,7 @@ export default function Sightings() {
           <option>Camera trap</option>
           <option>Ranger report</option>
           <option>CSV upload</option>
+          <option>Local YOLO inference</option>
         </select>
         {role === "admin" && (
           <select
@@ -217,7 +218,7 @@ export default function Sightings() {
           setSource("all");
           setStatus("all");
           setFrom("2026-09-22");
-          setTo(TODAY);
+          setTo("");
         }}
       >
         Clear filters

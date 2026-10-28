@@ -9,6 +9,7 @@ export type View =
   | "predictions"
   | "alerts"
   | "cameras"
+  | "webcam"
   | "reports"
   | "review"
   | "rangers"

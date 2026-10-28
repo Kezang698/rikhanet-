@@ -166,6 +166,16 @@ Set-Location (Join-Path ([Environment]::GetFolderPath("MyDocuments")) "RiKhaNET-
 npm.cmd run dev
 ```
 
+For local Webcam inference, install Python and the packages listed in `inference/requirements.txt`. On Windows, run these commands from the project folder:
+
+```powershell
+python -m venv inference/.venv
+inference\.venv\Scripts\python.exe -m pip install --upgrade pip
+inference\.venv\Scripts\python.exe -m pip install -r inference/requirements.txt
+```
+
+The inference endpoint loads `best.pt` from the project root and runs it with Ultralytics YOLO on the same machine as the Next.js server. If Python is not on PATH or you want a different interpreter, set `RIKHANET_PYTHON` to its executable path before starting Next.js. No inference API key or external inference service is used.
+
 Press Ctrl+C in the terminal to stop the app. Dependencies need to be installed only the first time, or after a dependency change.
 
 ## All screens
@@ -200,6 +210,7 @@ The sidebar changes by role. Ranger records are limited to GE-1 and GE-2. Each p
 - Filter and generate report charts from demo records. Export CSV, or use Export PDF and choose Save as PDF in the browser print dialog.
 - Import observation CSV files with validation. A sample file is in `public/sample-sightings.csv` and can also be downloaded in Data Review.
 - Preview your own image uploads. They remain marked Awaiting AI backend; the frontend does not invent detections for them.
+- Open the Webcam page to continuously track elephants from the browser webcam with the local `best.pt` YOLO model, or upload an image for a single check. Live boxes update as frames are processed; a detection is saved to Sightings for review when an elephant first appears.
 - Change notification preferences and view sample system information.
 - Edit each role's name, contact email, phone number and recovery contact in My Account; changes persist locally and update the profile header.
 
@@ -213,7 +224,7 @@ Maps use real OpenStreetMap geographic tiles with interactive markers. Sector ci
 
 The original document mixes April 2025/September 2026 dates and Zone A–D/GE-1–GE-4 labels. This implementation uses 28 September 2026 and GE-1–GE-4 consistently with the majority of screens and the role descriptions. Charts and counts reflect the demo records and can differ from the static screenshot totals after filtering or editing.
 
-Forecasts retain the document's 72%, 58%, 28% and 16% demonstration values. The model is labelled Research Preview. No YOLO/TFT inference, live camera connection, email or SMS sending, GIS boundary editor, account provisioning, password change or 2FA activation is implemented. Related forms clearly identify when they are only previews.
+Forecasts retain the document's 72%, 58%, 28% and 16% demonstration values. The Webcam page runs a persistent local Ultralytics YOLO worker and samples webcam video continuously, displaying tracked elephant boxes over the preview. It does not connect to registered CCTV devices. TFT forecasting, email or SMS sending, GIS boundary editor, account provisioning, password change or 2FA activation is not implemented. Related forms clearly identify when they are only previews.
 
 Records, profile details and notification preferences are saved in this browser's localStorage; role sign-in is held in sessionStorage. New image previews last only while the current tab stays open. Use Settings > Reset demonstration data to restore the initial records and profiles. This does not delete source files.
 
